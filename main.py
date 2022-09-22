@@ -122,19 +122,19 @@ if __name__ == '__main__':
                                                                             device=device,
                                                                             num_epochs=num_epochs)
         best_epoch_fold.append(best_epoch)
-        train_log.to_pickle("./logs_{}/train_log_f{}_{}_lr{}bs{}_{}.pkl".format(args.results_filename, fold,
-                                                                                args.dataset_directory.split('/')[-1], lr, bs,
-                                                                                data_settings['target_feature']), protocol=4)
-        valid_log.to_pickle("./logs_{}/valid_log_f{}_{}_lr{}bs{}_{}.pkl".format(args.results_filename, fold,
-                                                                                args.dataset_directory.split('/')[-1], lr, bs,
-                                                                                data_settings['target_feature']), protocol=4)
-        torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+        train_log.to_csv("./results_{}/train_log_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1], lr, bs,
                                                                                 data_settings['target_feature']))
-        torch.save(loss_curves, './results_{}/loss_curves_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+        valid_log.to_csv("./results_{}/valid_log_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1], lr, bs,
+                                                                                data_settings['target_feature']))
+        #torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+        #                                                                        args.dataset_directory.split('/')[-1], lr, bs,
+        #                                                                        data_settings['target_feature']))
+        np.save(loss_curves, './results_{}/loss_curves_f{}_{}_lr{}bs{}_{}.npy'.format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1],
                                                                                 lr, bs, data_settings['target_feature']))
-        torch.save(accs_curves, './results_{}/acc_curves_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+        np.save(accs_curves, './results_{}/acc_curves_f{}_{}_lr{}bs{}_{}.npy'.format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1],
                                                                                 lr, bs, data_settings['target_feature']))
 

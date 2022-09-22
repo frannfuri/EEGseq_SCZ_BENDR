@@ -78,10 +78,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, dataset_siz
                         valid_metrics = OrderedDict()
                         valid_metrics['epoch'] = epoch
                         valid_metrics['loss'] = loss.item()
-                        valid_metrics['accuracy'] = torch.sum(preds == labels.data) / inputs.size(0)
-                        valid_metrics['f1score'], valid_metrics['preciss'], valid_metrics['recall'] = f1_loss(
-                                                                                                    labels,
-                                                                                                    preds)
+                        valid_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
+                        f1score, preciss, recall = f1_loss(labels, preds)
+                        valid_metrics['f1score'] = f1score.item()
+                        valid_metrics['preciss'] = preciss.item()
+                        valid_metrics['recall'] = recall.item()
                         valid_log.append(valid_metrics)
                         val_num_samples += 1 + inputs.size(0)
 
