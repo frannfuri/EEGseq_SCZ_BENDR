@@ -63,11 +63,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, dataset_siz
                         it += 1
                         train_metrics['loss'] = loss.item()
                         # TODO: REVISAR accuracy !!
-                        train_metrics['accuracy'] = torch.sum(preds == labels.data) / inputs.size(0)
+                        train_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
                         # TODO: REVISAR F1score
-                        train_metrics['f1score'], train_metrics['preciss'], train_metrics['recall'] = f1_loss(
-                                                                                                    labels,
-                                                                                                    preds)
+                        f1score, preciss, recall = f1_loss(labels, preds)
+                        train_metrics['f1score'] = f1score.item()
+                        train_metrics['preciss'] = preciss.item()
+                        train_metrics['recall'] =  recall.item()
                         # TODO: WHY .PARAM_GROUPS[0][lr]?
                         train_metrics['lr'] = optimizer.param_groups[0]['lr']
                         loss.backward()

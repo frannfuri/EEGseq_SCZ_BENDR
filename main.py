@@ -26,6 +26,8 @@ if __name__ == '__main__':
                              'associated to them.')
     parser.add_argument('--random-seed', default=298,
                         help='Set fixed random seed.')
+    parser.add_argument('--save-models', default=False,
+                        help='Wether to save or not the best models per CV iteration.')
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -128,9 +130,10 @@ if __name__ == '__main__':
         valid_log.to_csv("./results_{}/valid_log_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1], lr, bs,
                                                                                 data_settings['target_feature']))
-        #torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
-        #                                                                        args.dataset_directory.split('/')[-1], lr, bs,
-        #                                                                        data_settings['target_feature']))
+        if args.save_models:
+            torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+                                                                                     args.dataset_directory.split('/')[-1], lr, bs,
+                                                                                     data_settings['target_feature']))
         np.save(loss_curves, './results_{}/loss_curves_f{}_{}_lr{}bs{}_{}.npy'.format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1],
                                                                                 lr, bs, data_settings['target_feature']))
