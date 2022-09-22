@@ -1,4 +1,5 @@
 import argparse
+import pickle
 import torch
 import yaml
 import os
@@ -33,7 +34,6 @@ if __name__ == '__main__':
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('---Using ' + str(device) + 'device---')
     os.makedirs('./results_' + args.results_filename, exist_ok=True)
-    os.makedirs('./logs_' + args.results_filename, exist_ok=True)
 
     with open(args.dataset_directory + '/info.yml') as infile:
         data_settings = yaml.load(infile, Loader=yaml.FullLoader)
@@ -134,12 +134,15 @@ if __name__ == '__main__':
             torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
                                                                                      args.dataset_directory.split('/')[-1], lr, bs,
                                                                                      data_settings['target_feature']))
-        np.save(loss_curves, './results_{}/loss_curves_f{}_{}_lr{}bs{}_{}.npy'.format(args.results_filename, fold,
+        with open('./results_{}/loss_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1],
-                                                                                lr, bs, data_settings['target_feature']))
-        np.save(accs_curves, './results_{}/acc_curves_f{}_{}_lr{}bs{}_{}.npy'.format(args.results_filename, fold,
+                                                                                lr, bs, data_settings['target_feature']), 'wb') as f:
+            pickle.dump(loss_curves, f)
+        with open('./results_{}/acc_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1],
-                                                                                lr, bs, data_settings['target_feature']))
+                                                                                lr, bs, data_settings['target_feature']), 'wb') as f:
+            pickle.dump(accs_curves, f)
+
 
     print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch_fold))
 
