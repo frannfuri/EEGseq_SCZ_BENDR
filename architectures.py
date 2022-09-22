@@ -22,7 +22,7 @@ class LinearHeadBENDR(nn.Module):
 
     def __init__(self, n_targets, samples_len, n_chn, encoder_h=512, projection_head=False, enc_do=0.1, feat_do=0.4,
                  pool_length=4, mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
-                 classifier_layers=1, return_features=True):
+                 classifier_layers=1, return_features=True, not_use_mask_train=False):
         if classifier_layers < 1:
             self.pool_length = pool_length
             self.encoder_h = 3 * encoder_h
@@ -37,6 +37,7 @@ class LinearHeadBENDR(nn.Module):
         self.n_targets = n_targets
         self.make_new_classification_layer()
         self._init_state = self.state_dict()
+        self.use_mask_train = not not_use_mask_train
         ##
 
         self.encoder = ConvEncoderBENDR(n_chn, encoder_h=encoder_h, projection_head=projection_head, dropout=enc_do)
@@ -48,7 +49,7 @@ class LinearHeadBENDR(nn.Module):
         mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
 
         self.enc_augment = EncodingAugment(encoder_h, mask_p_t, mask_p_c, mask_c_span=mask_c_span,
-                                           mask_t_span=mask_t_span)
+                                           mask_t_span=mask_t_span, not_use_mask_train=self.use_mask_train)
         tqdm.tqdm.write(self.encoder.description(None, samples_len) + " | {} pooled".format(pool_length))  # sfreq ?
         self.summarizer = nn.AdaptiveAvgPool1d(pool_length)
 
@@ -237,13 +238,14 @@ class ConvEncoderBENDR(nn.Module):
 # FIXME this is redundant with part of the contextualizer
 class EncodingAugment(nn.Module):
     def __init__(self, in_features, mask_p_t=0.1, mask_p_c=0.01, mask_t_span=6, mask_c_span=64, dropout=0.1,
-                 position_encoder=25):
+                 position_encoder=25, use_mask_train=True):
         super().__init__()
         self.mask_replacement = torch.nn.Parameter(torch.zeros(in_features), requires_grad=True)
         self.p_t = mask_p_t
         self.p_c = mask_p_c
         self.mask_t_span = mask_t_span
         self.mask_c_span = mask_c_span
+        self.use_mask = use_mask_train
         transformer_dim = 3 * in_features
 
         conv = nn.Conv1d(in_features, in_features, position_encoder, padding=position_encoder // 2, groups=16)
@@ -263,7 +265,7 @@ class EncodingAugment(nn.Module):
     def forward(self, x, mask_t=None, mask_c=None):
         bs, feat, seq = x.shape
 
-        if self.training:
+        if self.training and self.use_mask:
             if mask_t is None and self.p_t > 0 and self.mask_t_span > 0:
                 mask_t = _make_mask((bs, seq), self.p_t, x.shape[-1], self.mask_t_span)
             if mask_c is None and self.p_c > 0 and self.mask_c_span > 0:

@@ -27,8 +27,10 @@ if __name__ == '__main__':
                              'associated to them.')
     parser.add_argument('--random-seed', default=298,
                         help='Set fixed random seed.')
-    parser.add_argument('--save-models', default=False,
+    parser.add_argument('--save-models', action='store_true',
                         help='Wether to save or not the best models per CV iteration.')
+    parser.add_argument('--not-use-mask', action='store_true',
+                       help='Wheter to use or not mask in the train stage.')
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -88,8 +90,9 @@ if __name__ == '__main__':
         valid_dataset = standardDataset(all_X[valid_ids], all_y[valid_ids])
 
         # Dataloaders
-        trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True)
-        validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True)
+        to_drop_last = True if args.model=='linear' else False
+        trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True, drop_last=to_drop_last)
+        validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True, drop_last=to_drop_last)
         dataloaders = {'train': trainloader, 'valid': validloader}
 
         dataset_sizes = {x: len(dataloaders[x]) * bs for x in ['train', 'valid']}
@@ -105,7 +108,7 @@ if __name__ == '__main__':
             model = LinearHeadBENDR(n_targets=data_settings['num_cls'], samples_len=samples_tlen * 256, n_chn=20,
                                     encoder_h=512, projection_head=False, enc_do=0.1, feat_do=0.4, pool_length=4,
                                     mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
-                                    classifier_layers=1, return_features=True)
+                                    classifier_layers=1, return_features=True, not_use_mask_train=args.not_use_mask)
 
         if not args.random_init:
             model.load_pretrained_modules('./datasets/encoder.pt', './datasets/contextualizer.pt',
