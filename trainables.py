@@ -110,7 +110,7 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, dataset_siz
 
             # deep copy the model
             if phase == 'valid' and epoch_acc > best_acc: #/ val_num_samples > best_acc:
-                best_acc = epoch_acc / val_num_samples
+                best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
                 best_epoch = epoch
         print()

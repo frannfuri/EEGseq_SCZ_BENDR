@@ -114,7 +114,16 @@ if __name__ == '__main__':
             model = nn.DataParallel(model)
         model = model.to(device)
         optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
-        criterion = torch.nn.CrossEntropyLoss().to(device)
+
+        c1_train_instances = 0
+        for x,y in train_dataset:
+            c1_train_instances += y.item()
+        c0_train_instances = len(train_dataset) - c1_train_instances
+        c1_w = 1 / (c1_train_instances) * 1000  # Weigth to class 1
+        c0_w = 1 / (c0_train_instances) * 1000  # Weight to class 0
+        class_weights = torch.tensor([c0_w, c1_w], dtype=torch.float)
+
+        criterion = nn.CrossEntropyLoss(weight=class_weights).to(device)
         sched = lr_scheduler.OneCycleLR(optimizer, lr, epochs=num_epochs, steps_per_epoch=len(dataloaders['train']),
                                         pct_start=0.3, last_epoch=-1)
 
