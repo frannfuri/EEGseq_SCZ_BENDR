@@ -3,7 +3,7 @@ import pickle
 import torch
 import yaml
 import os
-import numpy as np
+import csv
 from datasets import charge_dataset, standardDataset
 from architectures import MODEL_CHOICES, LinearHeadBENDR, BENDRClassification
 from trainables import train_model
@@ -64,8 +64,10 @@ if __name__ == '__main__':
     torch.manual_seed(args.random_seed)
     print('-------------------------------------------')
 
+    with open('./{}'.format(data_settings['valid_sets_path']), newline='') as f:
+        reader = csv.reader(f)
+        valid_sets = list(reader)
     # Train parameters
-    valid_sets = data_settings['valid_sets']
     bs = data_settings['batch_size']
     num_cls = data_settings['num_cls']
     samples_tlen = data_settings['tlen']
