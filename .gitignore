@@ -1,3 +1,5 @@
 datasets
 __pycache__
 .idea
+logs_new
+results_new

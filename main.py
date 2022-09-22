@@ -121,9 +121,23 @@ if __name__ == '__main__':
                                                                             dataloaders=dataloaders, dataset_sizes=dataset_sizes,
                                                                             device=device,
                                                                             num_epochs=num_epochs)
-        a = 0
+        best_epoch_fold.append(best_epoch)
+        train_log.to_pickle("./logs_{}/train_log_f{}_{}_lr{}bs{}_{}.pkl".format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1], lr, bs,
+                                                                                data_settings['target_feature']), protocol=4)
+        valid_log.to_pickle("./logs_{}/valid_log_f{}_{}_lr{}bs{}_{}.pkl".format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1], lr, bs,
+                                                                                data_settings['target_feature']), protocol=4)
+        torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1], lr, bs,
+                                                                                data_settings['target_feature']))
+        torch.save(loss_curves, './results_{}/loss_curves_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1],
+                                                                                lr, bs, data_settings['target_feature']))
+        torch.save(accs_curves, './results_{}/acc_curves_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1],
+                                                                                lr, bs, data_settings['target_feature']))
 
-
-
+    print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch_fold))
 
     a = 0
