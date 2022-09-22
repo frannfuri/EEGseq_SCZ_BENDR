@@ -124,24 +124,25 @@ if __name__ == '__main__':
                                                                             device=device,
                                                                             num_epochs=num_epochs)
         best_epoch_fold.append(best_epoch)
-        train_log.to_csv("./results_{}/train_log_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
+        train_log.to_csv("./results_{}/train_Df_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1], lr, bs,
                                                                                 data_settings['target_feature']))
-        valid_log.to_csv("./results_{}/valid_log_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
+        valid_log.to_csv("./results_{}/valid_Df_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
                                                                                 args.dataset_directory.split('/')[-1], lr, bs,
                                                                                 data_settings['target_feature']))
+        with open('./results_{}/mean_loss_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1],
+                                                                                lr, bs, data_settings['target_feature']), 'wb') as f:
+            pickle.dump(loss_curves, f)
+        with open('./results_{}/mean_acc_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
+                                                                                args.dataset_directory.split('/')[-1],
+                                                                                lr, bs, data_settings['target_feature']), 'wb') as f:
+            pickle.dump(accs_curves, f)
+
         if args.save_models:
             torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
                                                                                      args.dataset_directory.split('/')[-1], lr, bs,
                                                                                      data_settings['target_feature']))
-        with open('./results_{}/loss_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
-                                                                                args.dataset_directory.split('/')[-1],
-                                                                                lr, bs, data_settings['target_feature']), 'wb') as f:
-            pickle.dump(loss_curves, f)
-        with open('./results_{}/acc_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
-                                                                                args.dataset_directory.split('/')[-1],
-                                                                                lr, bs, data_settings['target_feature']), 'wb') as f:
-            pickle.dump(accs_curves, f)
 
 
     print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch_fold))

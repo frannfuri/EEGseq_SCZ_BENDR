@@ -99,12 +99,12 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, dataset_siz
                 epoch_loss = running_loss / train_num_samples
                 epoch_acc = running_corrects / train_num_samples
                 train_losses.append(epoch_loss)
-                train_accs.append(epoch_acc)
+                train_accs.append(epoch_acc.item())
             else:
                 epoch_loss = running_loss / val_num_samples
                 epoch_acc = running_corrects / val_num_samples
                 valid_losses.append(epoch_loss)
-                valid_accs.append(epoch_acc)
+                valid_accs.append(epoch_acc.item())
 
             print('[{}];   Acc.: {:.4};   Loss: {:.4f}.'.format(phase, epoch_acc, epoch_loss))
 
