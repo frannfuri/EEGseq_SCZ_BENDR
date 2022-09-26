@@ -49,7 +49,7 @@ class LinearHeadBENDR(nn.Module):
         mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
 
         self.enc_augment = EncodingAugment(encoder_h, mask_p_t, mask_p_c, mask_c_span=mask_c_span,
-                                           mask_t_span=mask_t_span, not_use_mask_train=self.use_mask_train)
+                                           mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
         tqdm.tqdm.write(self.encoder.description(None, samples_len) + " | {} pooled".format(pool_length))  # sfreq ?
         self.summarizer = nn.AdaptiveAvgPool1d(pool_length)
 
@@ -96,6 +96,7 @@ class LinearHeadBENDR(nn.Module):
         classifier = nn.Linear(self.num_features_for_classification, self.n_targets)
         nn.init.xavier_normal_(classifier.weight)
         classifier.bias.data.zero_()
+        # TODO: THIS FLATTEN IS REDUNDANT?
         self.classifier = nn.Sequential(Flatten(), classifier)
 
     def freeze_features(self, unfreeze=False, freeze_classifier=False):

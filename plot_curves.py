@@ -4,7 +4,7 @@ import numpy as np
 import pickle
 
 if __name__ == '__main__':
-    path = './results/results_new_linear'
+    path = './results/results_new_not_mask_linear'
     name= 'decomp_study_SA047_AD1_lr1e-05bs16_conclusion'
     n_folds = 4
 
@@ -37,9 +37,7 @@ if __name__ == '__main__':
         valid_loss_curves_per_fold.append(fold_val_loss_curve)
         valid_acc_curves_per_fold.append(fold_val_acc_curve)
 
-
-    c = 0
-
+    plt.figure()
     for i in range(4):
         plt.plot(train_loss_curves_per_fold[i], label='Train CV it. {}'.format(i), linestyle='dashed')
         plt.plot(valid_loss_curves_per_fold[i], label='Valid CV it. {}'.format(i))
@@ -48,6 +46,7 @@ if __name__ == '__main__':
     plt.xlabel('epoch')
     plt.ylabel('cross entropy')
 
+    plt.figure()
     for i in range(4):
         plt.plot(train_acc_curves_per_fold[i], label='Train CV it. {}'.format(i), linestyle='dashed')
         plt.plot(valid_acc_curves_per_fold[i], label='Valid CV it. {}'.format(i))
@@ -55,4 +54,7 @@ if __name__ == '__main__':
     plt.legend(loc='best')
     plt.xlabel('epoch')
     plt.ylabel('accuracy')
+
+    plt.show(block=False)
+    a = 0
 

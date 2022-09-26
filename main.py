@@ -40,7 +40,6 @@ if __name__ == '__main__':
     with open(args.dataset_directory + '/info.yml') as infile:
         data_settings = yaml.load(infile, Loader=yaml.FullLoader)
 
-    # TODO : ADD POSITION INFORMATION TO SPLIT RECORDS THEN
     # Load dataset
     # list of len = n_records
     # each list[n] is of dim [n_segments, 20 , len_segments (256*tlen)]
