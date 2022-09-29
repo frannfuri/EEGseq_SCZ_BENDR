@@ -392,3 +392,4 @@ def get_record_max_and_min(rawEeg: mne.io.eeglab.eeglab.RawEEGLAB):  # , rd=0.9)
 
 def modified_mae(input, target):
     return torch.mean(target*torch.abs(input-target))
+

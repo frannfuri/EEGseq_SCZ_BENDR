@@ -10,7 +10,6 @@ from trainables import train_model
 from torch.optim import lr_scheduler
 from torch import nn
 
-# TODO: REVIEW DATAMAX DATAMIN PER DATASET
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Fine-tunes BENDER models.")
     parser.add_argument('model', choices=MODEL_CHOICES)
@@ -35,10 +34,12 @@ if __name__ == '__main__':
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('---Using ' + str(device) + 'device---')
-    os.makedirs('./results_' + args.results_filename, exist_ok=True)
 
     with open(args.dataset_directory + '/info.yml') as infile:
         data_settings = yaml.load(infile, Loader=yaml.FullLoader)
+
+    os.makedirs('./results_' + args.results_filename + '_len{}ov{}_'.format(
+                                    data_settings['tlen'], data_settings['overlap_len']), exist_ok=True)
 
     # Load dataset
     # list of len = n_records
@@ -78,6 +79,7 @@ if __name__ == '__main__':
     # TODO: WHATS IS THIS? Receptive field: 143 samples | Downsampled by 96 | Overlap of 47 samples | 106 encoded samples/trial
     # K-fold Cross Validation
     best_epoch_fold = []
+    print('DATASET: {}'.format(data_settings['name']))
     for fold in range(len(valid_sets)):
         valid_ids = [i for i in range(len(sorted_record_names)) if (sorted_record_names[i][:11] in valid_sets[fold])]
         train_ids = [i for i in range(len(sorted_record_names)) if (sorted_record_names[i][:11] not in valid_sets[fold])]
@@ -94,7 +96,6 @@ if __name__ == '__main__':
         validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True, drop_last=to_drop_last)
         dataloaders = {'train': trainloader, 'valid': validloader}
 
-        dataset_sizes = {x: len(dataloaders[x]) * bs for x in ['train', 'valid']}
 
         # MODEL
         if args.model == MODEL_CHOICES[0]:
@@ -133,27 +134,32 @@ if __name__ == '__main__':
         ##################################
         best_model, accs_curves, loss_curves, train_log, valid_log, best_epoch = train_model(model=model, criterion=criterion,
                                                                             optimizer=optimizer, scheduler=sched,
-                                                                            dataloaders=dataloaders, dataset_sizes=dataset_sizes,
+                                                                            dataloaders=dataloaders,
                                                                             device=device,
                                                                             num_epochs=num_epochs)
         best_epoch_fold.append(best_epoch)
-        train_log.to_csv("./results_{}/train_Df_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
+        train_log.to_csv("./results_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename,
+                                                                                data_settings['tlen'], data_settings['overlap_len'], fold,
                                                                                 args.dataset_directory.split('/')[-1], lr, bs,
                                                                                 data_settings['target_feature']))
-        valid_log.to_csv("./results_{}/valid_Df_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename, fold,
+        valid_log.to_csv("./results_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}_{}.csv".format(args.results_filename,
+                                                                                data_settings['tlen'], data_settings['overlap_len'], fold,
                                                                                 args.dataset_directory.split('/')[-1], lr, bs,
                                                                                 data_settings['target_feature']))
-        with open('./results_{}/mean_loss_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
+        with open('./results_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename,
+                                                                                data_settings['tlen'], data_settings['overlap_len'], fold,
                                                                                 args.dataset_directory.split('/')[-1],
                                                                                 lr, bs, data_settings['target_feature']), 'wb') as f:
             pickle.dump(loss_curves, f)
-        with open('./results_{}/mean_acc_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename, fold,
+        with open('./results_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}_{}.pkl'.format(args.results_filename,
+                                                                                data_settings['tlen'], data_settings['overlap_len'], fold,
                                                                                 args.dataset_directory.split('/')[-1],
                                                                                 lr, bs, data_settings['target_feature']), 'wb') as f:
             pickle.dump(accs_curves, f)
 
         if args.save_models:
-            torch.save(best_model.state_dict(), './results_{}/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename, fold,
+            torch.save(best_model.state_dict(), './results_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}_{}.pt'.format(args.results_filename,
+                                                                                     data_settings['tlen'], data_settings['overlap_len'], fold,
                                                                                      args.dataset_directory.split('/')[-1], lr, bs,
                                                                                      data_settings['target_feature']))
 

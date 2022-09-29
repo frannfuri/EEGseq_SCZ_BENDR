@@ -2,6 +2,7 @@ import torch, tqdm
 import copy
 import numpy as np
 from torch import nn
+import torch.nn.functional as F
 from copy import deepcopy
 from math import ceil
 
@@ -626,3 +627,27 @@ class BENDRContextualizer(nn.Module):
 
     def save(self, filename):
         torch.save(self.state_dict(), filename)
+
+# SIMPLER MODELS
+class Net(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv1d(20, 6, 7, 2)
+        self.pool = nn.MaxPool1d(2, 2)
+        self.conv2 = nn.Conv1d(6, 16, 7, 2)
+        self.fc1 = nn.Linear(16 * 638, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 2)
+
+    def forward(self, x):
+        # dim [16, 20, 10240]
+        x = self.pool(F.relu(self.conv1(x)))
+        # dim [16, 6, 2558]
+        x = self.pool(F.relu(self.conv2(x)))
+        # dim [16, 16, 638]
+        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        # dim [16, 10208]
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
