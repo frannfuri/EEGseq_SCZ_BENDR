@@ -637,7 +637,7 @@ class Net(nn.Module):
         self.conv2 = nn.Conv1d(6, 16, 7, 2)
         self.fc1 = nn.Linear(16 * 638, 120)
         self.fc2 = nn.Linear(120, 84)
-        self.fc3 = nn.Linear(84, 2)
+        self.fc3 = nn.Linear(84, 1)
 
     def forward(self, x):
         # dim [16, 20, 10240]

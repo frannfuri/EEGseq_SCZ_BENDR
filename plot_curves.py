@@ -5,9 +5,9 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = './results2/prueba_results_prueba_len40ov30_'
+    path = './results2/results2_tests04-10_len40ov30_'
         #'./results/results_SA047_lin_len40ov30_ndo'
-    name= 'h_scz_study_2_lr0.0003bs16_h_or_scz'
+    name= 'decomp_study_SA047_scratch_lr0.0003bs16'
         #'decomp_study_SA047_AD1_lr1e-05bs16_real_and_pred_SAPS'
     n_folds = 1
     use_lims = False#True

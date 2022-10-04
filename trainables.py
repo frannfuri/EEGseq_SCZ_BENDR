@@ -49,9 +49,11 @@ def train_model(model, criterion, optimizer, scheduler, dataloaders, device, num
                 # track history only if train phase
                 with torch.set_grad_enabled(phase=='train'):
                     outputs = model(inputs)
-                    _, preds = torch.max(outputs[0], 1)
+                    #_, preds = torch.max(outputs[0], 1)
                     labels = labels.to(torch.int64)
                     loss = criterion(outputs[0], labels)
+                    preds = torch.sigmoid(outputs[0])
+                    preds = (preds >= 0.5).long()
 
                     # backward + optimize only if in train phase
                     if phase == 'train':
@@ -210,9 +212,11 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                 # track history only if train phase
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
-                    _, preds = torch.max(outputs, 1)
-                    labels = labels.to(torch.int64)
-                    loss = criterion(outputs, labels)
+                    labels = labels.to(torch.float64)
+                    loss = criterion(outputs.squeeze(), labels)
+                    prepreds = torch.sigmoid(outputs)
+                    preds = (prepreds >= 0.5).long().squeeze()
+
 
                     # backward + optimize only if in train phase
                     if phase == 'train':
@@ -266,10 +270,16 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
             print('[{}];   Acc.: {:.4};   Loss: {:.4f}.'.format(phase, epoch_acc, epoch_loss))
 
             # deep copy the model
-            if phase == 'valid' and epoch_acc > best_acc:  # / val_num_samples > best_acc:
-                best_acc = epoch_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
-                best_epoch = epoch
+            if use_valid:
+                if phase == 'valid' and epoch_acc > best_acc:  # / val_num_samples > best_acc:
+                    best_acc = epoch_acc
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    best_epoch = epoch
+            else:
+                if phase == 'train' and epoch_acc > best_acc:  # / val_num_samples > best_acc:
+                    best_acc = epoch_acc
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    best_epoch = epoch
         print()
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
