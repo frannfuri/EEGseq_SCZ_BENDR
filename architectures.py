@@ -638,6 +638,8 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(16 * 638, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 1)
+        nn.init.xavier_normal_(self.fc3.weight)
+        self.fc3.bias.data.zero_()
 
     def forward(self, x):
         # dim [16, 20, 10240]

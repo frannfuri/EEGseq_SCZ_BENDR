@@ -6,9 +6,13 @@ import os
 import csv
 from datasets import charge_dataset, standardDataset
 from architectures import Net
-from trainables import train_model, train_scratch_model
-from torch.optim import lr_scheduler
+from trainables import train_scratch_model
+import seaborn as sn
+import pandas as pd
+import matplotlib.pyplot as plt
 from torch import nn
+from utils import comp_confusion_matrix
+from mlxtend.plotting import plot_confusion_matrix
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Train models from simpler to more complex.")
@@ -126,6 +130,19 @@ if __name__ == '__main__':
 
     print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch))
     a = 0
+
+    if args.use_valid:
+        pass
+    else:
+        cm = comp_confusion_matrix(best_model, dataloaders['train'], data_settings['num_cls'], device)
+
+    figure, ax = plot_confusion_matrix(conf_mat=cm.detach().cpu().numpy(), class_names=['low + sympts', 'high + sympts'],
+                                       show_absolute=True, show_normed=False, colorbar=True)
+    plt.title('Confusion matrix in {} set'.format('validation' if args.use_val else 'train'))
+    plt.ylim([1.5, -0.5])
+    plt.tight_layout()
+    plt.show()
+
 
     '''
     # TODO: WHATS IS THIS? Receptive field: 143 samples | Downsampled by 96 | Overlap of 47 samples | 106 encoded samples/trial

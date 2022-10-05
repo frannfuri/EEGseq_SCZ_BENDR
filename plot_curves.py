@@ -5,7 +5,7 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = './results2/results2_tests04-10_len40ov30_'
+    path = './results2/results2_final_xavier_len40ov30_'
         #'./results/results_SA047_lin_len40ov30_ndo'
     name= 'decomp_study_SA047_scratch_lr0.0003bs16'
         #'decomp_study_SA047_AD1_lr1e-05bs16_real_and_pred_SAPS'
@@ -15,6 +15,7 @@ if __name__ == '__main__':
         loss_lims = (0, 3)
         acc_lims = (0.4, 1.0)
     use_val = False
+
 
 
 ###############################################
@@ -53,7 +54,7 @@ if __name__ == '__main__':
 
     plt.figure()
     for i in range(n_folds):
-        plt.plot(train_loss_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
+        plt.plot(train_loss_curves_per_fold[i][:20], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
             plt.plot(valid_loss_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
     plt.title('Training loss\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)
@@ -82,7 +83,7 @@ if __name__ == '__main__':
 
     plt.figure()
     for i in range(n_folds):
-        plt.plot(train_acc_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
+        plt.plot(train_acc_curves_per_fold[i][:20], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
             plt.plot(valid_acc_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
     plt.title('Training accuracy\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)

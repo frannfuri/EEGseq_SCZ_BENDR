@@ -6,10 +6,12 @@
 
 # Train LO/MSO from checkpoint
 #python3 main.py linear --results-filename "new" --dataset-directory "datasets/decomp_study"
-python3 main.py BENDR --multi-gpu --results-filename "new" --dataset-directory "datasets/decomp_study_SA047"
+#python3 main.py BENDR --multi-gpu --results-filename "new" --dataset-directory "datasets/decomp_study_SA047"
 
 # Train LO/MSO from checkpoint with frozen encoder
 #python3 main.py linear --freeze-encoder --results-filename "new" --dataset-directory "datasets/decomp_study"
 #python3 main.py BENDR --freeze-encoder --results-filename "new" --dataset-directory "datasets/decomp_study"
 
+# Train from scratch
+python3 main_from_scratch.py --results-filename test_sigmoid --dataset-directory ./datasets/h_scz_study_scratch
 

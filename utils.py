@@ -393,3 +393,16 @@ def get_record_max_and_min(rawEeg: mne.io.eeglab.eeglab.RawEEGLAB):  # , rd=0.9)
 def modified_mae(input, target):
     return torch.mean(target*torch.abs(input-target))
 
+def comp_confusion_matrix(model_logits, dataloader, nb_classes, device):
+    confusion_matrix = torch.zeros(nb_classes, nb_classes)
+    model_logits.eval()
+    with torch.no_grad():
+        for i, (inputs, classes) in enumerate(dataloader):
+            inputs = inputs.to(device)
+            classes = classes.to(device)
+            outputs = model_logits(inputs)
+            prepreds = torch.sigmoid(outputs)
+            preds = (prepreds >= 0.5).squeeze()
+            for t, p in zip(classes.view(-1), preds.view(-1)):
+                confusion_matrix[t.long(), p.long()] += 1
+    return confusion_matrix
