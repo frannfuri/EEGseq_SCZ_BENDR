@@ -98,8 +98,8 @@ if __name__ == '__main__':
             train_dataset = standardDataset(all_X[train_ids], all_y[train_ids])
             valid_dataset = standardDataset(all_X[valid_ids], all_y[valid_ids])
 
-            trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True, drop_last=to_drop_last)
-            validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True, drop_last=to_drop_last)
+            trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True)
+            validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True)
             dataloaders = {'train': trainloader, 'valid': validloader}
         else:
             dataset = standardDataset(all_X, all_y)
