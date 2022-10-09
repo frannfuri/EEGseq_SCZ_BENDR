@@ -4,7 +4,7 @@ import copy
 import sklearn.metrics as skmetrics
 import pandas as pd
 from collections import OrderedDict
-from utils import modified_mae
+from utils import modified_mae, dummy_loss
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, device, num_epochs):
     since = time.time()
@@ -213,7 +213,7 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
                     labels = labels.to(torch.float64)
-                    loss = criterion(outputs.squeeze(), labels)
+                    loss = dummy_loss(outputs.squeeze(), labels)
                     prepreds = torch.sigmoid(outputs)
                     preds = (prepreds >= 0.5).long().squeeze()
 
