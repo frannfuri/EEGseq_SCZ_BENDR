@@ -78,6 +78,26 @@ class standardDataset(TorchDataset):
         # TODO: Is necesary to unsqueeze Xi (in dim 0) ??
         return Xi.float(), yi.float()
 
+class recInfoDataset(TorchDataset):
+    def __init__(self, X, y, rec_info):
+        if X.shape[0] != y.shape[0] or X.shape[0] != len(rec_info):
+            print('First dimesion of X and y must be the same')
+            return
+
+        self.X = X
+        self.y = y
+        self.rec_info = rec_info
+
+    def __len__(self):
+        return self.X.shape[0]
+
+    def __getitem__(self, idx):
+        Xi = self.X[idx]
+        yi = self.y[idx]
+        rec_info_i = self.rec_info[idx]
+        # TODO: Is necesary to unsqueeze Xi (in dim 0) ??
+        return Xi.float(), yi.float(), rec_info_i
+
 
 class EEGrecord_instance_divide_in_epochs(TorchDataset):
     def __init__(self, raw: mne.io.Raw, data_max, data_min, tlen, overlap, apply_winsor,

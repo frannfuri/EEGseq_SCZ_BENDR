@@ -6,15 +6,16 @@ import re
 
 if __name__ == '__main__':
     path = './results2/results2_final_xavier_len40ov30_'
-        #'./results/results_SA047_lin_len40ov30_ndo'
     name= 'decomp_study_SA047_scratch_lr0.0003bs16'
-        #'decomp_study_SA047_AD1_lr1e-05bs16_real_and_pred_SAPS'
-    n_folds = 1
+    n_folds = 4
     use_lims = False#True
+    use_val = True
+    if use_val:
+        per_record_val = True
     if use_lims:
         loss_lims = (0, 3)
         acc_lims = (0.4, 1.0)
-    use_val = False
+
 
 
 
@@ -46,11 +47,19 @@ if __name__ == '__main__':
             fold_tr_acc_curve.append(train_Dataframes_per_fold[f][train_Dataframes_per_fold[f]['epoch'] == e].mean()['accuracy'])
             if use_val:
                 fold_val_loss_curve.append(valid_Dataframes_per_fold[f][valid_Dataframes_per_fold[f]['epoch'] == e].mean()['loss'])
-                fold_val_acc_curve.append(valid_Dataframes_per_fold[f][valid_Dataframes_per_fold[f]['epoch'] == e].mean()['accuracy'])
+                if not per_record_val:
+                    fold_val_acc_curve.append(valid_Dataframes_per_fold[f][valid_Dataframes_per_fold[f]['epoch'] == e].mean()['accuracy'])
         train_loss_curves_per_fold.append(fold_tr_loss_curve)
         train_acc_curves_per_fold.append(fold_tr_acc_curve)
         valid_loss_curves_per_fold.append(fold_val_loss_curve)
-        valid_acc_curves_per_fold.append(fold_val_acc_curve)
+        if not per_record_val:
+            valid_acc_curves_per_fold.append(fold_val_acc_curve)
+
+    if use_val and per_record_val:
+        for f in range(n_folds):
+            with open('{}/mean_acc_curves_f{}_{}.pkl'.format(path, f, name), "rb") as input_file:
+                acc_curve_ = pickle.load(input_file)
+            valid_acc_curves_per_fold.append(acc_curve_[1])
 
     plt.figure()
     for i in range(n_folds):

@@ -407,7 +407,4 @@ def comp_confusion_matrix(model_logits, dataloader, nb_classes, device):
                 confusion_matrix[t.long(), p.long()] += 1
     return confusion_matrix
 
-def dummy_loss(output, target):
-    loss = output[3]
-    return loss
 

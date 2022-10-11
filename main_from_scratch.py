@@ -4,9 +4,9 @@ import torch
 import yaml
 import os
 import csv
-from datasets import charge_dataset, standardDataset
+from datasets import charge_dataset, standardDataset, recInfoDataset
 from architectures import Net
-from trainables import train_scratch_model
+from trainables import train_scratch_model, train_scratch_model_no_valid
 import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -95,8 +95,11 @@ if __name__ == '__main__':
             print('-----------------------')
 
             # Split data
-            train_dataset = standardDataset(all_X[train_ids], all_y[train_ids])
-            valid_dataset = standardDataset(all_X[valid_ids], all_y[valid_ids])
+            train_dataset = recInfoDataset(all_X[train_ids], all_y[train_ids], [sorted_record_names[i] for i in train_ids])
+            valid_dataset = recInfoDataset(all_X[valid_ids], all_y[valid_ids], [sorted_record_names[i] for i in valid_ids])
+            #train_dataset = standardDataset(all_X[train_ids], all_y[train_ids])
+            #valid_dataset = standardDataset(all_X[valid_ids], all_y[valid_ids])
+
 
             trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True)
             validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True)
@@ -118,9 +121,14 @@ if __name__ == '__main__':
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
         # Train
-        best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
-                                        model, criterion, optimizer, dataloaders, device, num_epochs, use_valid=args.use_valid)
+        if args.use_valid:
+            best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
+                model, criterion, optimizer, dataloaders, device, num_epochs, valid_sets[fold], len(valid_dataset))
+        else:
+            best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
+                                            model, criterion, optimizer, dataloaders, device, num_epochs)
 
+        best_epoch_fold.append(best_epoch)
         train_df.to_csv("./results2_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs))
         valid_df.to_csv("./results2_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
@@ -146,10 +154,10 @@ if __name__ == '__main__':
             figure, ax = plot_confusion_matrix(conf_mat=cm.detach().cpu().numpy(),
                                                class_names=['low + sympts', 'high + sympts'],
                                                show_absolute=True, show_normed=False, colorbar=True)
-            plt.title('Confusion matrix in {} set'.format('validation' if args.use_val else 'train'))
+            plt.title('Confusion matrix in {} set'.format('validation' if args.use_valid else 'train'))
             plt.ylim([1.5, -0.5])
             plt.tight_layout()
-    print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch))
+    print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch_fold))
     plt.show()
     a = 0
 
