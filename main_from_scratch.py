@@ -27,11 +27,14 @@ if __name__ == '__main__':
     parser.add_argument('--random-seed', default=298,
                         help='Set fixed random seed.')
     parser.add_argument('--save-models', action='store_true',
-                        help='Wether to save or not the best models per CV iteration.')
+                        help='Whether to save or not the best models per CV iteration.')
     parser.add_argument('--use-valid', action='store_true',
-                       help='Wether to use or not a valid subset of the data.')
+                       help='Whether to use or not a valid subset of the data.')
+    parser.add_argument('--valid-per-record', action='store_true',
+                        help="Whether to validate considerating the whole record. "
+                             "Will only be done if use-valid is true.")
     parser.add_argument('--plot-cm', action='store_true',
-                       help='Wether to plot or not a confusion matrix for each fold best model.')
+                       help='Whether to plot or not a confusion matrix for each fold best model.')
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -123,7 +126,7 @@ if __name__ == '__main__':
         # Train
         if args.use_valid:
             best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
-                model, criterion, optimizer, dataloaders, device, num_epochs, valid_sets[fold], len(valid_dataset))
+                model, criterion, optimizer, dataloaders, device, num_epochs, valid_sets[fold], len(valid_dataset), args.valid_per_record)
         else:
             best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
                                             model, criterion, optimizer, dataloaders, device, num_epochs)

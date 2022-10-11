@@ -261,7 +261,7 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
     return model, (train_accs, valid_accs), (train_losses, valid_losses), pd.DataFrame(train_log), pd.DataFrame(
         valid_log), best_epoch
 
-def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len):
+def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len, valid_per_record):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -342,29 +342,32 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                         valid_metrics = OrderedDict()
                         valid_metrics['epoch'] = epoch
                         valid_metrics['loss'] = loss.item()
-                        #valid_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
+                        if valid_per_record:
+                            for b_element in range(len(labels)):
+                                assert (preds[b_element].item() == 1 or preds[b_element].item() == 0) and (
+                                            labels[b_element].item() == 1 or labels[b_element].item() == 0)
+                                if preds[b_element].item() == labels[b_element].item():
+                                    df_valid.loc[['corrects'], [rec_info[b_element]]] += 1
+                                else:
+                                    df_valid.loc[['incorrects'], [rec_info[b_element]]] += 1
+                                if df_valid.loc[['target'], [rec_info[b_element]]].values.item() == 5:
+                                    df_valid.loc[['target'], [rec_info[b_element]]] = labels[b_element].item()
+                                assert df_valid.loc[['target'], [rec_info[b_element]]].values.item() == labels[
+                                    b_element].item()
+                        else:
+                            valid_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
                         f1score, preciss, recall = f1_loss(labels, preds)
                         valid_metrics['f1score'] = f1score.item()
                         valid_metrics['preciss'] = preciss.item()
                         valid_metrics['recall'] = recall.item()
                         valid_log.append(valid_metrics)
                         val_num_samples += 1 * inputs.size(0)
-                        for b_element in range(len(labels)):
-                            assert (preds[b_element].item() == 1 or preds[b_element].item() == 0) and (labels[b_element].item() == 1 or labels[b_element].item() == 0)
-                            if preds[b_element].item() == labels[b_element].item():
-                                df_valid.loc[['corrects'], [rec_info[b_element]]] += 1
-                            else:
-                                df_valid.loc[['incorrects'], [rec_info[b_element]]] += 1
-                            if df_valid.loc[['target'], [rec_info[b_element]]].values.item() == 5:
-                                df_valid.loc[['target'], [rec_info[b_element]]] = labels[b_element].item()
-                            assert df_valid.loc[['target'], [rec_info[b_element]]].values.item() == labels[b_element].item()
-
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
-                if phase == 'train':
+                if phase == 'train' or (phase == 'valid' and not valid_per_record):
                     running_corrects += torch.sum(preds == labels.data)
-            if phase == 'valid':
+            if phase == 'valid' and valid_per_record:
                 totals_vals = 0
                 for col in range(df_valid.shape[1]):
                     total = df_valid[df_valid.columns[col]]['corrects'] + df_valid[df_valid.columns[col]]['incorrects']
@@ -382,14 +385,17 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                 train_accs.append(epoch_acc.item())
             else:
                 epoch_loss = running_loss / val_num_samples
-                epoch_acc = running_corrects / len(valid_rec_names)#val_num_samples
+                if valid_per_record:
+                    epoch_acc = running_corrects / len(valid_rec_names)
+                else:
+                    epoch_acc = running_corrects / val_num_samples
                 valid_losses.append(epoch_loss)
                 valid_accs.append(epoch_acc)
 
             print('[{}];   Acc.: {:.4};   Loss: {:.4f}.'.format(phase, epoch_acc, epoch_loss))
 
             # deep copy the model
-            if phase == 'valid' and epoch_acc > best_acc:  # / val_num_samples > best_acc:
+            if phase == 'valid' and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model_wts = copy.deepcopy(model.state_dict())
                 best_epoch = epoch
