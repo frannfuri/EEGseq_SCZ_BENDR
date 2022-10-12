@@ -5,7 +5,7 @@ import yaml
 import os
 import csv
 from datasets import charge_dataset, standardDataset, recInfoDataset
-from architectures import Net
+from architectures import Net, LinearHeadBENDR_from_scratch
 from trainables import train_scratch_model, train_scratch_model_no_valid
 import seaborn as sn
 import pandas as pd
@@ -35,6 +35,9 @@ if __name__ == '__main__':
                              "Will only be done if use-valid is true.")
     parser.add_argument('--plot-cm', action='store_true',
                        help='Whether to plot or not a confusion matrix for each fold best model.')
+    parser.add_argument('--load-bendr-weigths', action='store_true', help= "Load BENDR pretrained weigths, it can be encoder or encoder+context.")
+    parser.add_argument('--freeze-bendr_encoder', action = 'store_true', help = "Whether to keep the encoder stage frozen. "
+                       "Will only be done if bendr weigths are loaded and when using bendr encoder arch.")
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -83,6 +86,7 @@ if __name__ == '__main__':
     num_epochs = data_settings['epochs']
 
     # TODO: WHATS IS THIS? Receptive field: 143 samples | Downsampled by 96 | Overlap of 47 samples | 106 encoded samples/trial
+    # TODO: Creo q lo anterior solo sale cuando se crea un encoder, hay que confirmarlo
     # K-fold Cross Validation
     best_epoch_fold = []
     print('DATASET: {}'.format(data_settings['name']))
@@ -100,8 +104,6 @@ if __name__ == '__main__':
             # Split data
             train_dataset = recInfoDataset(all_X[train_ids], all_y[train_ids], [sorted_record_names[i] for i in train_ids])
             valid_dataset = recInfoDataset(all_X[valid_ids], all_y[valid_ids], [sorted_record_names[i] for i in valid_ids])
-            #train_dataset = standardDataset(all_X[train_ids], all_y[train_ids])
-            #valid_dataset = standardDataset(all_X[valid_ids], all_y[valid_ids])
 
 
             trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True)
@@ -109,19 +111,46 @@ if __name__ == '__main__':
             dataloaders = {'train': trainloader, 'valid': validloader}
         else:
             dataset = standardDataset(all_X, all_y)
+            train_dataset = dataset
             dataloader = torch.utils.data.DataLoader(dataset, batch_size=bs, shuffle=True)
             dataloaders = {'train': dataloader}
 
         # Model
-        model = Net()
+        #model = Net()
+        '''
+        model = LinearHeadBENDR_from_scratch(n_targets=data_settings['num_cls'], samples_len=samples_tlen * 256, n_chn=20,
+                                    encoder_h=512, projection_head=False,
+                                             # DROPOUTS
+                                    enc_do=0.0, feat_do=0.0, #enc_do=0.1, feat_do=0.4,
+                                    pool_length=4,
+                                             # MASKS LENGHTS
+                                    mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
+                                    classifier_layers=1, return_features=True,
+                                             # IF USE MASK OR NOT
+                                    not_use_mask_train=True) #not_use_mask_train=False)
+        # REMOVE NORMS OR INITIALIZATION CLASSIFICATION LAYER EVENTUALLY
+        '''
 
+        if args.load_bendr_weigths:
+            model.load_pretrained_modules('./datasets/encoder.pt', './datasets/contextualizer.pt',
+                                          freeze_encoder=args.freeze_bendr_encoder)
         if args.multi_gpu:
             model = nn.DataParallel(model)
         model = model.to(device)
 
-        # Loss and Optimizer
-        criterion = nn.BCEWithLogitsLoss()
+        # Optimizer and Loss
         optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+
+        # loss weigths
+        c1_train_instances = 0
+        for x, y in train_dataset:
+            c1_train_instances += y.item()
+        c0_train_instances = len(train_dataset) - c1_train_instances
+        c1_w = 1 / (c1_train_instances) * 1000  # Weigth to class 1
+        c0_w = 1 / (c0_train_instances) * 1000  # Weight to class 0
+        class_weights = torch.tensor([c0_w, c1_w], dtype=torch.float)
+
+        criterion = nn.BCEWithLogitsLoss(weigths=class_weights)
 
         # Train
         if args.use_valid:
