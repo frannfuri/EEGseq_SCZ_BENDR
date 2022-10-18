@@ -5,6 +5,8 @@ import sklearn.metrics as skmetrics
 import pandas as pd
 from collections import OrderedDict
 import numpy as np
+from utils import decision
+import random
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, device, num_epochs):
     since = time.time()
@@ -261,7 +263,8 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
     return model, (train_accs, valid_accs), (train_losses, valid_losses), pd.DataFrame(train_log), pd.DataFrame(
         valid_log), best_epoch
 
-def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len, valid_per_record):
+def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len,
+                        valid_per_record, extra_aug):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -302,6 +305,14 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
             for inputs, labels, rec_info in dataloaders[phase]:
                 inputs = inputs.to(device)
                 labels = labels.to(device)
+
+                # Extra augmentation?
+                if extra_aug:
+                    for batch_sample in range(inputs.shape[0]):
+                        if decision(0.2):
+                            inputs[batch_sample, :, :] = round(random.uniform(0.8, 1.2), 2) * inputs[batch_sample, :, :]
+                        elif decision(0.2):
+                            inputs[batch_sample, :, :] = -1 * inputs[batch_sample, :, :]
 
                 # Zero the parameter gradients
                 optimizer.zero_grad()

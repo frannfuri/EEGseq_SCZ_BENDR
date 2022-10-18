@@ -37,9 +37,11 @@ if __name__ == '__main__':
     parser.add_argument('--plot-cm', action='store_true',
                        help='Whether to plot or not a confusion matrix for each fold best model.')
     parser.add_argument('--load-bendr-weigths', action='store_true', help= "Load BENDR pretrained weigths, it can be encoder or encoder+context.")
-    parser.add_argument('--freeze-bendr_encoder', action = 'store_true', help = "Whether to keep the encoder stage frozen. "
+    parser.add_argument('--freeze-bendr-encoder', action = 'store_true', help = "Whether to keep the encoder stage frozen. "
                        "Will only be done if bendr weigths are loaded and when using bendr encoder arch.")
     parser.add_argument('--ponderate-loss', action='store_true', help='Add weigths to the loss function.')
+    parser.add_argument('--extra-aug', action='store_true', help='Ponderate the input signal with a certain probability'
+                                                                 'to avoid overfitting.')
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -133,7 +135,7 @@ if __name__ == '__main__':
         # Model
         model = Net()
         '''
-        model = LinearHeadBENDR_from_scratch(n_targets=data_settings['num_cls'], samples_len=samples_tlen * 256, n_chn=20,
+        model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
                                     encoder_h=512, projection_head=False,
                                              # DROPOUTS
                                     enc_do=0.0, feat_do=0.0, #enc_do=0.1, feat_do=0.4,
@@ -154,17 +156,17 @@ if __name__ == '__main__':
         model = model.to(device)
 
         # Optimizer and Loss
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr)
+        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
         if args.ponderate_loss:
-            criterion = nn.BCEWithLogitsLoss(weigth=class_weigth, reduction='none')
+            criterion = nn.BCEWithLogitsLoss(weigth=class_weigth) #, reduction='none')
         else:
-            criterion = nn.BCEWithLogitsLoss(reduction='none')
+            criterion = nn.BCEWithLogitsLoss() #reduction='none')
 
         # Train
         if args.use_valid:
             best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
                                             model, criterion, optimizer, dataloaders, device, num_epochs,
-                                            valid_sets[fold], len(valid_dataset), args.valid_per_record)
+                                            valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug)
         else:
             best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
                                             model, criterion, optimizer, dataloaders, device, num_epochs)

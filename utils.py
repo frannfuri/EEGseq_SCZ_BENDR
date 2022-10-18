@@ -3,6 +3,7 @@ import mne.epochs
 import torch
 import numpy as np
 import os
+import random
 
 from tqdm import tqdm
 from torch.nn.functional import interpolate
@@ -397,7 +398,7 @@ def comp_confusion_matrix(model_logits, dataloader, nb_classes, device):
     confusion_matrix = torch.zeros(nb_classes, nb_classes)
     model_logits.eval()
     with torch.no_grad():
-        for i, (inputs, classes) in enumerate(dataloader):
+        for i, (inputs, classes, _) in enumerate(dataloader):
             inputs = inputs.to(device)
             classes = classes.to(device)
             outputs = model_logits(inputs)
@@ -407,4 +408,8 @@ def comp_confusion_matrix(model_logits, dataloader, nb_classes, device):
                 confusion_matrix[t.long(), p.long()] += 1
     return confusion_matrix
 
+def all_same(items):
+    return all(x == items[0] for x in items)
 
+def decision(probability):
+    return random.random() < probability
