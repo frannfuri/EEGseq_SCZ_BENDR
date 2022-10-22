@@ -329,8 +329,12 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
 
                     # backward + optimize only if in train phase
                     if phase == 'train':
-                        if it % 5 == 0:
-                            print('iteration nb. {}'.format(it))
+                        if len(dataloaders[phase]) > 100:
+                            if it % 50 == 0:
+                                print('iteration nb. {}'.format(it))
+                        else:
+                            if it % 5 == 0:
+                                print('iteration nb. {}'.format(it))
                         train_metrics = OrderedDict()
                         train_metrics['epoch'] = epoch
                         train_metrics['iter'] = it

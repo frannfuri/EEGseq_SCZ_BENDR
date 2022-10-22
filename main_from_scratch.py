@@ -89,8 +89,7 @@ if __name__ == '__main__':
     lr = data_settings['lr']
     num_epochs = data_settings['epochs']
 
-    # TODO: WHATS IS THIS? Receptive field: 143 samples | Downsampled by 96 | Overlap of 47 samples | 106 encoded samples/trial
-    # TODO: Creo q lo anterior solo sale cuando se crea un encoder, hay que confirmarlo
+
     # K-fold Cross Validation
     best_epoch_fold = []
     print('DATASET: {}'.format(data_settings['name']))
@@ -133,20 +132,17 @@ if __name__ == '__main__':
                 class_weigth = c0_train_instances / c1_train_instances
 
         # Model
-        model = Net()
-        '''
+        #model = Net()
         model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
                                     encoder_h=512, projection_head=False,
                                              # DROPOUTS
-                                    enc_do=0.0, feat_do=0.0, #enc_do=0.1, feat_do=0.4,
+                                    enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                     pool_length=4,
                                              # MASKS LENGHTS
                                     mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
-                                    classifier_layers=1, return_features=True,
+                                    classifier_layers=1, return_features=False,
                                              # IF USE MASK OR NOT
-                                    not_use_mask_train=True) #not_use_mask_train=False)
-        # REMOVE NORMS OR INITIALIZATION CLASSIFICATION LAYER EVENTUALLY
-        '''
+                                    not_use_mask_train=False)
 
         if args.load_bendr_weigths:
             model.load_pretrained_modules('./datasets/encoder.pt', './datasets/contextualizer.pt',
@@ -172,19 +168,19 @@ if __name__ == '__main__':
                                             model, criterion, optimizer, dataloaders, device, num_epochs)
 
         best_epoch_fold.append(best_epoch)
-        train_df.to_csv("./results2_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        train_df.to_csv("./rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs))
-        valid_df.to_csv("./results2_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        valid_df.to_csv("./rslts_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs))
-        with open('./results2_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        with open('./rslts_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_losses, f)
-        with open('./results2_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        with open('./rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                         fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_accs, f)
 
         if args.save_models:
-            torch.save(best_model.state_dict(), './{}_results2_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.results_filename, data_settings['tlen'],
+            torch.save(best_model.state_dict(), './rslts_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.results_filename, data_settings['tlen'],
                                                                                         data_settings['overlap_len'], fold, args.dataset_directory.split('/')[-1], lr, bs))
 
         # Plot Confusion Matrix

@@ -711,7 +711,8 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         self.extended_classifier = nn.Sequential(Flatten())
         for i in range(1, len(classifier_layers)):
             self.extended_classifier.add_module("ext-classifier-{}".format(i), nn.Sequential(
-                nn.AvgPool1d(classifier_layers[i]), #nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
+                nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
+                #nn.AdaptiveAvgPool1d(classifier_layers[i]), #
                 nn.Dropout(feat_do),
                 nn.ReLU(),
                 nn.BatchNorm1d(classifier_layers[i]),
