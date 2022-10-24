@@ -54,7 +54,7 @@ if __name__ == '__main__':
         with open('./{}'.format(data_settings['valid_sets_path']), newline='') as f:
             reader = csv.reader(f)
             valid_sets = list(reader)
-    os.makedirs('./results2_' + args.results_filename + '_len{}ov{}_'.format(
+    os.makedirs('./rslts_' + args.results_filename + '_len{}ov{}_'.format(
                                     data_settings['tlen'], data_settings['overlap_len']), exist_ok=True)
 
     # Load dataset
@@ -110,7 +110,11 @@ if __name__ == '__main__':
 
 
             trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True)
-            validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True)
+            if args.valid_per_record:
+                validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=1, shuffle=False)
+                print('Validation set were not shuffled!')
+            else:
+                validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=bs, shuffle=True)
             dataloaders = {'train': trainloader, 'valid': validloader}
             if args.ponderate_loss:
                 # loss weigths

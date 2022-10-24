@@ -5,13 +5,13 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = './results2/results2_final_xavier_len40ov30_'
-    name= 'decomp_study_SA047_scratch_lr0.0003bs16'
-    n_folds = 4
-    use_lims = False#True
+    path = './rslts_linf_len40ov30_'
+    name= 'decomp_study_SA047_lr0.0001bs16'
+    n_folds = 6
+    use_lims = False #True
     use_val = True
     if use_val:
-        per_record_val = True
+        per_record_val = False  #True
     if use_lims:
         loss_lims = (0, 3)
         acc_lims = (0.4, 1.0)

@@ -5,7 +5,7 @@ import sklearn.metrics as skmetrics
 import pandas as pd
 from collections import OrderedDict
 import numpy as np
-from utils import decision
+from utils import decision, all_same
 import random
 
 def train_model(model, criterion, optimizer, scheduler, dataloaders, device, num_epochs):
@@ -285,10 +285,6 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
         # Each epoch has a training and validation phase
         all_phases = ['train', 'valid']
 
-        # Valid scores info
-        df_valid = pd.DataFrame(np.zeros((3, len(valid_rec_names))), columns=valid_rec_names, index=['corrects', 'incorrects', 'target'])
-        df_valid.loc['target',:] = np.ones(df_valid.shape[1])*5
-
         for phase in all_phases:
             if phase == 'train':
                 model.train()  # Set model to training mode
@@ -301,6 +297,11 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
 
             train_num_samples = 0
             val_num_samples = 0
+
+            valids_preds_ = []
+            valid_targets_ = []
+            valid_names_ = []
+            valid_name_analyze = '0'
             # Batch iterations
             for inputs, labels, rec_info in dataloaders[phase]:
                 inputs = inputs.to(device)
@@ -358,17 +359,18 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                         valid_metrics['epoch'] = epoch
                         valid_metrics['loss'] = loss.item()
                         if valid_per_record:
-                            for b_element in range(len(labels)):
-                                assert (preds[b_element].item() == 1 or preds[b_element].item() == 0) and (
-                                            labels[b_element].item() == 1 or labels[b_element].item() == 0)
-                                if preds[b_element].item() == labels[b_element].item():
-                                    df_valid.loc[['corrects'], [rec_info[b_element]]] += 1
-                                else:
-                                    df_valid.loc[['incorrects'], [rec_info[b_element]]] += 1
-                                if df_valid.loc[['target'], [rec_info[b_element]]].values.item() == 5:
-                                    df_valid.loc[['target'], [rec_info[b_element]]] = labels[b_element].item()
-                                assert df_valid.loc[['target'], [rec_info[b_element]]].values.item() == labels[
-                                    b_element].item()
+                            if valid_name_analyze != rec_info[0]:
+                                if valid_name_analyze != '0':
+                                    valids_preds_.append(one_record_valid_predictions)
+                                    valid_targets_.append(one_record_valid_targets)
+                                one_record_valid_predictions = []
+                                one_record_valid_targets = []
+                                valid_names_.append(rec_info[0])
+                                valid_name_analyze = rec_info[0]
+                            assert (preds.item() == 1 or preds.item() == 0) and (   # sanity check
+                                    labels.item() == 1 or labels.item() == 0)
+                            one_record_valid_predictions.append(preds.item())
+                            one_record_valid_targets.append(labels.item())
                         else:
                             valid_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
                         f1score, preciss, recall = f1_loss(labels, preds)
@@ -383,15 +385,27 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                 if phase == 'train' or (phase == 'valid' and not valid_per_record):
                     running_corrects += torch.sum(preds == labels.data)
             if phase == 'valid' and valid_per_record:
-                totals_vals = 0
-                for col in range(df_valid.shape[1]):
-                    total = df_valid[df_valid.columns[col]]['corrects'] + df_valid[df_valid.columns[col]]['incorrects']
-                    if df_valid[df_valid.columns[col]]['corrects']/total >= 0.5:
-                        running_corrects += 1
-                    totals_vals += total
+                valids_preds_.append(one_record_valid_predictions)
+                valid_targets_.append(one_record_valid_targets)
 
-                # a sanity check
-                assert totals_vals == valid_len
+
+                tot_ = 0
+                corr_ = 0
+                for i_ in range(len(valid_targets_)):
+                    assert all_same(valid_targets_[i_])
+                    assert len(valid_targets_[i_]) == len(valids_preds_[i_])
+                    index_count_ = 0
+                    len_subsegment_ = len(valid_targets_[i_])//3
+                    for j_ in range(3):
+                        subsegment_preds_ = valids_preds_[i_][index_count_:(index_count_+len_subsegment_)]
+                        subsegment_corrects_ = 0
+                        for pred_ii in subsegment_preds_:
+                            if pred_ii == valid_targets_[i_][0]:
+                                subsegment_corrects_ += 1
+                        if subsegment_corrects_/len_subsegment_ >= 0.5:
+                            corr_ += 1
+                        tot_ += 1
+                        index_count_ += len_subsegment_
 
             if phase == 'train':
                 epoch_loss = running_loss / train_num_samples
@@ -401,7 +415,7 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
             else:
                 epoch_loss = running_loss / val_num_samples
                 if valid_per_record:
-                    epoch_acc = running_corrects / len(valid_rec_names)
+                    epoch_acc = corr_/tot_
                 else:
                     epoch_acc = running_corrects / val_num_samples
                 valid_losses.append(epoch_loss)
