@@ -325,7 +325,7 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                     labels = labels.to(torch.float64)
                     loss = criterion(outputs.squeeze(1), labels)
                     prepreds = torch.sigmoid(outputs)
-                    preds = (prepreds >= 0.5).long().squeeze(1)
+                    preds = (prepreds >= 0.6).long().squeeze(1)
 
 
                     # backward + optimize only if in train phase

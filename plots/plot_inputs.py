@@ -1,8 +1,8 @@
 import torch
 import matplotlib.pyplot as plt
 import numpy as np
-all_inputs = torch.load('./all_inputs_SA010.pt')
-all_labels = torch.load('./all_labels_SA010.pt')
+all_inputs = torch.load('../all_inputs_h_scz_Alpha.pt')
+all_labels = torch.load('../all_labels_h_scz_Alpha.pt')
 all_inputs = all_inputs.detach().cpu().numpy()
 all_labels = all_labels.detach().cpu().numpy()
 

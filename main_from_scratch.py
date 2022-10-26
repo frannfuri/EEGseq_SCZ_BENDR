@@ -42,6 +42,8 @@ if __name__ == '__main__':
     parser.add_argument('--ponderate-loss', action='store_true', help='Add weigths to the loss function.')
     parser.add_argument('--extra-aug', action='store_true', help='Ponderate the input signal with a certain probability'
                                                                  'to avoid overfitting.')
+    parser.add_argument('--freeze-first-layers', action='store_true', help = "Whether to keep the 3 first layers of the encoder stage frozen. "
+                            "Will only be done if bendr weigths are loaded and when using bendr encoder arch.")
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -151,12 +153,19 @@ if __name__ == '__main__':
         if args.load_bendr_weigths:
             model.load_pretrained_modules('./datasets/encoder.pt', './datasets/contextualizer.pt',
                                           freeze_encoder=args.freeze_bendr_encoder)
+            if not args.freeze_bendr_encoder:
+                if args.freeze_first_layers:
+                    model.freeze_first_layers()
         if args.multi_gpu:
             model = nn.DataParallel(model)
         model = model.to(device)
 
         # Optimizer and Loss
-        optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
+        if args.freeze_first_layers:
+            optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0.01)
+        else:
+            optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
+
         if args.ponderate_loss:
             criterion = nn.BCEWithLogitsLoss(weigth=class_weigth) #, reduction='none')
         else:

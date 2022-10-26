@@ -10,9 +10,9 @@ import numpy as np
 if __name__ == '__main__':
     # PARAMETERS
     valid_sets_path = '../datasets/valid_sets/val_sets_SA000.csv'
-    data_path = '../datasets/h_scz_study'
-    model_path = '../results/rslts_probAug_linf_len30ov20_/best_model_f0_h_scz_study_lr0.0001bs16.pt'
-    fold = 0  ### IT MUST COINCIDE WITH THE FOLD IN THE model_path !!!!!!
+    data_path = '../datasets/h_scz_study_Alpha'
+    model_path = '../results/rslts_probAug_linf_vpr_len30ov20_/best_model_f1_h_scz_study_Alpha_lr0.0001bs16.pt'
+    fold = 1  ### IT MUST COINCIDE WITH THE FOLD IN THE model_path !!!!!!
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -36,6 +36,9 @@ if __name__ == '__main__':
 
     # Reorder the Xs and Ys data
     is_first_rec = True
+    f___ = 5
+    model_path = '../results/rslts_probAug_linf_vpr_len30ov20_/best_model_f{}_h_scz_study_Alpha_lr0.0001bs16.pt'.format(f___)
+    fold = f___  ### IT MUST COINCIDE WITH THE FOLD IN THE model_path !!!!!!
     for rec in array_epochs_all_records:
         if is_first_rec:
             all_X = rec[0]
@@ -91,7 +94,7 @@ if __name__ == '__main__':
         assert all_recs_targets[i][0] == 1 or all_recs_targets[i][0] == 0
         axs[i].scatter(list(range(len(all_recs_predictions[i]))), all_recs_predictions[i],
                        label='{} (target={})'.format(valid_record_names[i], all_recs_targets[i][0]),
-                       c=marker_color, markersize=20)
+                       c=marker_color, s=20)
         axs[i].legend(fontsize=8)
         axs[i].set_ylim((-0.5, 1.5))
     plt.tight_layout()

@@ -778,6 +778,21 @@ class LinearHeadBENDR_from_scratch(nn.Module):
     # def num_features_for_classification(self):
     #    raise NotImplementedError
 
+    def freeze_first_layers(self, unfreeze=False):
+        '''
+        Parameters
+        ----------
+        unfreeze : bool
+                   To unfreeze weights after a previous call to this.
+        '''
+        for name, param in self.parameters():
+            if param.requires_grad:
+                if ('Encoder_0' in name) or ('Encoder_1' in name) or ('Encoder_2' in name):
+                    param.requires_grad = False
+        ### GROUP NORM??? TODO:
+
+
+
     def classifier_forward(self, features):
         return self.classifier(features)
 
