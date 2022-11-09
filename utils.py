@@ -4,6 +4,8 @@ import torch
 import numpy as np
 import os
 import random
+import matplotlib.pyplot as plt
+from matplotlib.collections import LineCollection
 
 from tqdm import tqdm
 from torch.nn.functional import interpolate
@@ -413,3 +415,40 @@ def all_same(items):
 
 def decision(probability):
     return random.random() < probability
+
+def plot_eeg(np_eeg, chn_labels=None):
+    fig, ax = plt.subplots()
+    ticklocks = []
+    x = np.linspace(0, 40, np_eeg.shape[1])
+    dmin = np_eeg.min()
+    dmax = np_eeg.max()
+    dr = (dmax - dmin) * 0.7 # crowd them a bit
+    y0 = dmin
+    y1 = (np_eeg.shape[0] - 1) * dr + dmax
+    ax.set_ylim(y0, y1)
+    segs = []
+    for i in range(np_eeg.shape[0]):
+        segs.append(np.column_stack((x, np_eeg[i, :])))
+        ticklocks.append(i * dr)
+    offsets = np.zeros((np_eeg.shape[0], 2), dtype=float)
+    offsets[:, 1] = ticklocks
+
+    lines = LineCollection(segs, offsets=offsets, transOffset=None, linewidths=0.5)
+    ax.add_collection(lines)
+    ax.set_yticks(ticklocks)
+    if chn_labels == None:
+        ax.set_yticklabels([
+        'FP1', 'FP2',
+        'F7', 'F3', 'FZ', 'F4', 'F8',
+        'T7', 'C3', 'CZ', 'C4', 'T8',
+        'T5', 'P3', 'PZ', 'P4', 'T6',
+        'O1', 'O2', 'relat_Amp'
+        ])
+    else:
+        assert len(chn_labels) == np_eeg.shape[0]
+        chn_labels.append('relat_Amp')
+        ax.set_yticklabels(chn_labels)
+    ax.set_xlim([0, x[-1]])
+    ax.set_xlabel('Time (s)')
+    plt.tight_layout()
+    plt.show()

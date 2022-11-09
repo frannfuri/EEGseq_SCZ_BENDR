@@ -711,8 +711,8 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         self.extended_classifier = nn.Sequential(Flatten())
         for i in range(1, len(classifier_layers)):
             self.extended_classifier.add_module("ext-classifier-{}".format(i), nn.Sequential(
-                nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
-                #nn.AdaptiveAvgPool1d(classifier_layers[i]), #
+                #nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
+                nn.AdaptiveAvgPool1d(classifier_layers[i]), #
                 nn.Dropout(feat_do),
                 nn.ReLU(),
                 nn.BatchNorm1d(classifier_layers[i]),
@@ -785,9 +785,9 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         unfreeze : bool
                    To unfreeze weights after a previous call to this.
         '''
-        for name, param in self.parameters():
+        for name, param in self.named_parameters():
             if param.requires_grad:
-                if ('Encoder_0' in name) or ('Encoder_1' in name) or ('Encoder_2' in name):
+                if ('Encoder_0' in name): # or ('Encoder_1' in name) or ('Encoder_2' in name):
                     param.requires_grad = False
         ### GROUP NORM??? TODO:
 
@@ -953,3 +953,28 @@ class EncodingAugment_from_scratch(nn.Module):
         for param in self.parameters():
             param.requires_grad = False
         print("Initialized mask embedding and position encoder from ", filename)
+
+# Trying to replicate "Deep Convolutional Neural Network Model for Automated Diagnosis of Schizophrenia Using EEG Signals"
+class DeepNet(nn.Module):
+    def __init__(self):
+        super().__init__()
+        self.conv1 = nn.Conv1d(19, 5, 3, 1)
+        self.maxpool = nn.MaxPool1d(2, 2)
+        self.conv2 = nn.Conv1d(5, 5, 3, 1)
+        self.conv3 = nn.Conv1d(5, 5, 3, 1)
+        self.avgpool1 = nn.AvgPool1d(2, 2)
+        self.conv4 = nn.Conv1d(5, 5, 3, 1)
+        self.avgpool2 = nn.AvgPool1d(2, 2)
+        self.conv5 = nn.Conv1d(5, 5, 3, 1)
+        self.globavgpool = nn.AdaptiveAvgPool1d(5)
+        self.fc = nn.Linear(5, 1)
+
+    def forward(self, x):
+        x = self.maxpool(F.leaky_relu(self.conv1(x)))
+        x = self.maxpool(F.leaky_relu(self.conv2(x)))
+        x = self.avgpool1(F.leaky_relu(self.conv3(x)))
+        x = self.avgpool2(F.leaky_relu(self.conv4(x)))
+        x = F.leaky_relu(self.conv5(x))
+        x = self.globavgpool(x)
+        x = self.fc(x)
+        return x

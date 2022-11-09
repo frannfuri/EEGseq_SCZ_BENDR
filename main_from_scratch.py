@@ -111,7 +111,7 @@ if __name__ == '__main__':
             valid_dataset = recInfoDataset(all_X[valid_ids], all_y[valid_ids], [sorted_record_names[i] for i in valid_ids])
 
 
-            trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True)
+            trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True, drop_last=True)
             if args.valid_per_record:
                 validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=1, shuffle=False)
                 print('Validation set were not shuffled!')
@@ -142,7 +142,7 @@ if __name__ == '__main__':
         model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
                                     encoder_h=512, projection_head=False,
                                              # DROPOUTS
-                                    enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                    enc_do=0.1, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                     pool_length=4,
                                              # MASKS LENGHTS
                                     mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
@@ -212,5 +212,3 @@ if __name__ == '__main__':
     print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch_fold))
     plt.show()
     a = 0
-
-

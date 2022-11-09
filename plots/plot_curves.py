@@ -5,21 +5,18 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = './rslts_linf_len40ov30_'
-    name= 'decomp_study_SA047_lr0.0001bs16'
+    path = '../rslts_pAug_avpf_vpr_th06_dp0307_len40ov30_'
+    name= 'h_scz_study_lr0.0001bs16'
     n_folds = 6
-    use_lims = False #True
+    use_lims = True
     use_val = True
     if use_val:
-        per_record_val = False  #True
+        per_record_val = True
     if use_lims:
-        loss_lims = (0, 3)
-        acc_lims = (0.4, 1.0)
+        loss_lims = (0, 5)
+        acc_lims = (0.3, 0.95)
 
-
-
-
-###############################################
+    ###############################################
     w_len = int((re.search('len(.+?)ov', path)).group(1))
     overlap = int((re.search('ov(.+?)_',path)).group(1))  # must be a even (par) number?
     train_Dataframes_per_fold = []
@@ -63,7 +60,7 @@ if __name__ == '__main__':
 
     plt.figure()
     for i in range(n_folds):
-        plt.plot(train_loss_curves_per_fold[i][:20], label='Train CV it. {}'.format(i+1), linestyle='dashed')
+        plt.plot(train_loss_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
             plt.plot(valid_loss_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
     plt.title('Training loss\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)
@@ -92,7 +89,7 @@ if __name__ == '__main__':
 
     plt.figure()
     for i in range(n_folds):
-        plt.plot(train_acc_curves_per_fold[i][:20], label='Train CV it. {}'.format(i+1), linestyle='dashed')
+        plt.plot(train_acc_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
             plt.plot(valid_acc_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
     plt.title('Training accuracy\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)
@@ -119,6 +116,6 @@ if __name__ == '__main__':
         plt.ylim(acc_lims)
     plt.ylabel('accuracy')
 
-    plt.show() #block=False)
+    plt.show(block=False)
     a = 0
 
