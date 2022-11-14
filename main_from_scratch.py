@@ -5,19 +5,20 @@ import yaml
 import os
 import csv
 from datasets import charge_dataset, standardDataset, recInfoDataset
-from architectures import Net, LinearHeadBENDR_from_scratch
+from architectures import Net, LinearHeadBENDR_from_scratch, BENDRClassification_from_scratch
 from trainables import train_scratch_model, train_scratch_model_no_valid
 import numpy as np
 import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
 from torch import nn
-from utils import comp_confusion_matrix
+from utils import comp_confusion_matrix, MODEL_CHOICES
 from mlxtend.plotting import plot_confusion_matrix
 
 if __name__ == '__main__':
     # Arguments and preliminaries
     parser = argparse.ArgumentParser(description="Train models from simpler to more complex.")
+    parser.add_argument('model', choices=MODEL_CHOICES)
     parser.add_argument('--multi-gpu', action='store_true', help='Distribute model over multiple GPUs')
     parser.add_argument('--num-workers', default=4, type=int, help='Number of dataloader workers.')
     parser.add_argument('--results-filename', default=None, help='What to name the spreadsheet produced with all '
@@ -34,8 +35,6 @@ if __name__ == '__main__':
     parser.add_argument('--valid-per-record', action='store_true',
                         help="Whether to validate considerating the whole record. "
                              "Will only be done if use-valid is true.")
-    parser.add_argument('--plot-cm', action='store_true',
-                       help='Whether to plot or not a confusion matrix for each fold best model.')
     parser.add_argument('--load-bendr-weigths', action='store_true', help= "Load BENDR pretrained weigths, it can be encoder or encoder+context.")
     parser.add_argument('--freeze-bendr-encoder', action = 'store_true', help = "Whether to keep the encoder stage frozen. "
                        "Will only be done if bendr weigths are loaded and when using bendr encoder arch.")
@@ -138,20 +137,30 @@ if __name__ == '__main__':
                 class_weigth = c0_train_instances / c1_train_instances
 
         # Model
-        #model = Net()
-        model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
-                                    encoder_h=512, projection_head=False,
-                                             # DROPOUTS
-                                    enc_do=0.1, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
-                                    pool_length=4,
-                                             # MASKS LENGHTS
-                                    mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
-                                    classifier_layers=1, return_features=False,
-                                             # IF USE MASK OR NOT
-                                    not_use_mask_train=False)
+        if args.model == 'linear':
+            model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
+                                        encoder_h=512, projection_head=False,
+                                                 # DROPOUTS
+                                        enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                        pool_length=4,
+                                                 # MASKS LENGHTS
+                                        mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
+                                        classifier_layers=1, return_features=False,
+                                                 # IF USE MASK OR NOT
+                                        not_use_mask_train=False)
+        elif args.model == 'BENDR':
+            model = BENDRClassification_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
+                                        encoder_h=512,
+                                        contextualizer_hidden=3076, projection_head=False,
+                                        new_projection_layers=0, dropout=0., trial_embeddings=None, layer_drop=0,
+                                        keep_layers=None,
+                                        mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.1, mask_c_span=0.1,
+                                        multi_gpu=False, return_features=False)
+        else:
+            assert 1 == 0
 
         if args.load_bendr_weigths:
-            model.load_pretrained_modules('./datasets/encoder.pt', './datasets/contextualizer.pt',
+            model.load_pretrained_modules('../BENDR_datasets/encoder.pt', '../BENDR_datasets/contextualizer.pt',
                                           freeze_encoder=args.freeze_bendr_encoder)
             if not args.freeze_bendr_encoder:
                 if args.freeze_first_layers:
@@ -167,9 +176,9 @@ if __name__ == '__main__':
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
 
         if args.ponderate_loss:
-            criterion = nn.BCEWithLogitsLoss(weigth=class_weigth) #, reduction='none')
+            criterion = nn.BCEWithLogitsLoss(weigth=class_weigth)
         else:
-            criterion = nn.BCEWithLogitsLoss() #reduction='none')
+            criterion = nn.BCEWithLogitsLoss()
 
         # Train
         if args.use_valid:
@@ -181,34 +190,20 @@ if __name__ == '__main__':
                                             model, criterion, optimizer, dataloaders, device, num_epochs)
 
         best_epoch_fold.append(best_epoch)
-        train_df.to_csv("./rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        train_df.to_csv("./{}-rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs))
-        valid_df.to_csv("./rslts_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        valid_df.to_csv("./{}-rslts_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs))
-        with open('./rslts_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        with open('./{}-rslts_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_losses, f)
-        with open('./rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        with open('./{}-rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                         fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_accs, f)
 
         if args.save_models:
-            torch.save(best_model.state_dict(), './rslts_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.results_filename, data_settings['tlen'],
+            torch.save(best_model.state_dict(), './{}-rslts_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.model, args.results_filename, data_settings['tlen'],
                                                                                         data_settings['overlap_len'], fold, args.dataset_directory.split('/')[-1], lr, bs))
-
-        # Plot Confusion Matrix
-        if args.plot_cm:
-            if args.use_valid:
-                cm = comp_confusion_matrix(best_model, dataloaders['valid'], data_settings['num_cls'], device)
-            else:
-                cm = comp_confusion_matrix(best_model, dataloaders['train'], data_settings['num_cls'], device)
-
-            figure, ax = plot_confusion_matrix(conf_mat=cm.detach().cpu().numpy(),
-                                               class_names=['low + sympts', 'high + sympts'],
-                                               show_absolute=True, show_normed=False, colorbar=True)
-            plt.title('Confusion matrix in {} set'.format('validation' if args.use_valid else 'train'))
-            plt.ylim([1.5, -0.5])
-            plt.tight_layout()
     print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch_fold))
     plt.show()
     a = 0

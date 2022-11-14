@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Train from scratch
-python3 main_from_scratch.py --results-filename pAug_avpf_vpr_th06_dp0107_bw --dataset-directory ./datasets/h_scz_study --use-valid --extra-aug --save-models --valid-per-record --load-bendr-weigths
+python3 main_from_scratch.py linear --results-filename pAug_avpf_vpr_th06_dp0307_bw_f1f --dataset-directory ../datasets/h_scz_study --use-valid --extra-aug --save-models --valid-per-record --load-bendr-weigths --freeze-first-layers
 # Train LO/MSO from scratch
 #python3 main.py linear --random-init --results-filename "new" --dataset-directory "datasets/decomp_study"
 #python3 main.py BENDR --random-init --results-filename "new" --dataset-directory "datasets/decomp_study"
@@ -13,4 +13,3 @@ python3 main_from_scratch.py --results-filename pAug_avpf_vpr_th06_dp0107_bw --d
 # Train LO/MSO from checkpoint with frozen encoder
 #python3 main.py linear --freeze-encoder --results-filename "new" --dataset-directory "datasets/decomp_study"
 #python3 main.py BENDR --freeze-encoder --results-filename "new" --dataset-directory "datasets/decomp_study"
-

@@ -10,9 +10,7 @@ import numpy as np
 if __name__ == '__main__':
     # PARAMETERS
     valid_sets_path = '../datasets/valid_sets/val_sets_SA000.csv'
-    data_path = '../datasets/h_scz_study_Alpha'
-    model_path = '../results/rslts_probAug_linf_vpr_len30ov20_/best_model_f1_h_scz_study_Alpha_lr0.0001bs16.pt'
-    fold = 1  ### IT MUST COINCIDE WITH THE FOLD IN THE model_path !!!!!!
+    data_path = '../datasets/h_scz_study'
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -36,8 +34,16 @@ if __name__ == '__main__':
 
     # Reorder the Xs and Ys data
     is_first_rec = True
-    f___ = 5
-    model_path = '../results/rslts_probAug_linf_vpr_len30ov20_/best_model_f{}_h_scz_study_Alpha_lr0.0001bs16.pt'.format(f___)
+
+    #from utils import plot_cm_valid_per_record
+    #cm = plot_cm_valid_per_record(array_epochs_all_records, sorted_record_names, data_settings['tlen'],valid_sets_path, fold, m_path, 0.6)
+
+
+    ####### CUSTOM PARAMETERS #######
+    f___ = 0
+    model_path = '../rslts_pAug_avpf_vpr_th06_dp0307_bw_len40ov30_/best_model_f{}_h_scz_study_lr0.0001bs16.pt'.format(f___)
+    #################################
+
     fold = f___  ### IT MUST COINCIDE WITH THE FOLD IN THE model_path !!!!!!
     for rec in array_epochs_all_records:
         if is_first_rec:
@@ -88,13 +94,14 @@ if __name__ == '__main__':
         assert all_same(rec_targets)
         all_recs_targets.append(rec_targets)
 
-    fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(10,8))
+    fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(10,6))
     for i in range(len(valid_record_names)):
         marker_color = 'blue' if all_recs_targets[i][0] == 0 else 'red'
         assert all_recs_targets[i][0] == 1 or all_recs_targets[i][0] == 0
         axs[i].scatter(list(range(len(all_recs_predictions[i]))), all_recs_predictions[i],
                        label='{} (target={})'.format(valid_record_names[i], all_recs_targets[i][0]),
                        c=marker_color, s=20)
+        axs[i].set_title('Sample predictions of best model CV it. n°{}'.format(fold + 1), fontsize=8)
         axs[i].legend(fontsize=8)
         axs[i].set_ylim((-0.5, 1.5))
     plt.tight_layout()

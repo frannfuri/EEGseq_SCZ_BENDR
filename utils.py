@@ -3,6 +3,8 @@ import mne.epochs
 import torch
 import numpy as np
 import os
+import csv
+import re
 import random
 import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
@@ -14,6 +16,10 @@ from channels import map_dataset_channels_deep_1010, DEEP_1010_CH_TYPES, SCALE_I
 
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import BatchSampler
+from architectures import LinearHeadBENDR_from_scratch
+#from datasets import recInfoDataset
+
+MODEL_CHOICES = ['BENDR', 'linear']
 
 
 class BalancedBatchSampler(BatchSampler):
@@ -452,3 +458,95 @@ def plot_eeg(np_eeg, chn_labels=None):
     ax.set_xlabel('Time (s)')
     plt.tight_layout()
     plt.show()
+
+def plot_cm_valid_per_record(array_epochs_all_records, sorted_record_names, samples_tlen, valid_sets_path, fold, model_path, th, num_cls=2):
+    from datasets import recInfoDataset
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    print('---Using ' + str(device) + 'device---')
+
+    with open('./{}'.format(valid_sets_path), newline='') as f:
+        reader = csv.reader(f)
+        valid_sets = list(reader)
+
+    # Reorder the Xs and Ys data
+    is_first_rec = True
+    assert int((re.search('model_f(.+?)_', model_path)).group(1)) == fold
+    for rec in array_epochs_all_records:
+        if is_first_rec:
+            all_X = rec[0]
+            all_y = rec[1]
+            is_first_rec = False
+        else:
+            all_X = torch.cat((all_X, rec[0]), dim=0)
+            all_y = torch.cat((all_y, rec[1]), dim=0)
+    print('-------------------------------------------')
+
+    valid_ids = [i for i in range(len(sorted_record_names)) if (sorted_record_names[i][:11] in valid_sets[fold])]
+    valid_dataset = recInfoDataset(all_X[valid_ids], all_y[valid_ids], [sorted_record_names[i] for i in valid_ids])
+
+    valid_record_names = np.unique(valid_dataset[:][2])
+    validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=1, shuffle=False)
+    model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
+                                         encoder_h=512, projection_head=False,
+                                         # DROPOUTS
+                                         enc_do=0.3, feat_do=0.7,  # enc_do=0.1, feat_do=0.4,
+                                         pool_length=4,
+                                         # MASKS LENGHTS
+                                         mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
+                                         classifier_layers=1, return_features=False,
+                                         # IF USE MASK OR NOT
+                                         not_use_mask_train=False)
+    model.load_state_dict(torch.load(model_path, map_location=device))
+    model.to(device)
+
+    confusion_matrix = torch.zeros(num_cls, num_cls)
+    model.eval()
+
+    valid_name_analyze = '0'
+    valids_preds_ = []
+    valid_targets_ = []
+    valid_names_ = []
+    with torch.no_grad():
+        for i, (inputs, classes, rec_info) in enumerate(validloader):
+            inputs = inputs.to(device)
+            classes = classes.to(device)
+            outputs = model(inputs)
+            prepreds = torch.sigmoid(outputs)
+            preds = (prepreds >= th).long().squeeze()
+
+            if valid_name_analyze != rec_info[0]:
+                if valid_name_analyze != '0':
+                    valids_preds_.append(one_record_valid_predictions)
+                    valid_targets_.append(one_record_valid_targets)
+                one_record_valid_predictions = []
+                one_record_valid_targets = []
+                valid_names_.append(rec_info[0])
+                valid_name_analyze = rec_info[0]
+            assert (preds.item() == 1 or preds.item() == 0) and (  # sanity check
+                    classes.item() == 1 or classes.item() == 0)
+            one_record_valid_predictions.append(preds.item())
+            one_record_valid_targets.append(classes.item())
+    valids_preds_.append(one_record_valid_predictions)
+    valid_targets_.append(one_record_valid_targets)
+
+    valid_preds_subseg_conclusion = []
+    valid_targets_subseg_conclusion = []
+    for i in range(len(valid_targets_)):
+        assert all_same(valid_targets_[i])
+        assert len(valid_targets_[i]) == len(valids_preds_[i])
+        index_count = 0
+        len_subsegment = len(valid_targets_[i])//3
+        for j in range(3):
+            subseg_preds_ = valids_preds_[i][index_count:(index_count+len_subsegment)]
+            subseg_target_ = valid_targets_[i][0]
+            assert np.mean(subseg_preds_) >= 0 and np.mean(subseg_preds_) <= 1
+            if np.mean(subseg_preds_) >= 0.5:
+                valid_preds_subseg_conclusion.append(1)
+            else:
+                valid_preds_subseg_conclusion.append(0)
+            valid_targets_subseg_conclusion.append(int(subseg_target_))
+            index_count += len_subsegment
+
+    for t, p in zip(torch.tensor(valid_targets_subseg_conclusion).view(-1), torch.tensor(valid_preds_subseg_conclusion).view(-1)):
+        confusion_matrix[t.long(), p.long()] += 1
+    return confusion_matrix
