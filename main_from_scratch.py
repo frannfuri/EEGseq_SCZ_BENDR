@@ -55,7 +55,7 @@ if __name__ == '__main__':
         with open('./{}'.format(data_settings['valid_sets_path']), newline='') as f:
             reader = csv.reader(f)
             valid_sets = list(reader)
-    os.makedirs('./rslts_' + args.results_filename + '_len{}ov{}_'.format(
+    os.makedirs('./{}-rslts_'.format(args.model) + args.results_filename + '_len{}ov{}_'.format(
                                     data_settings['tlen'], data_settings['overlap_len']), exist_ok=True)
 
     # Load dataset
@@ -161,7 +161,7 @@ if __name__ == '__main__':
 
         if args.load_bendr_weigths:
             model.load_pretrained_modules('../BENDR_datasets/encoder.pt', '../BENDR_datasets/contextualizer.pt',
-                                          freeze_encoder=args.freeze_bendr_encoder)
+                                          freeze_encoder=args.freeze_bendr_encoder, device=device)
             if not args.freeze_bendr_encoder:
                 if args.freeze_first_layers:
                     model.freeze_first_layers()
