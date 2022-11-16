@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Train from scratch
-python3 main_from_scratch.py linear --results-filename pAug_avpf_vpr_th06_dp0307_bw_f1f --dataset-directory ../BENDR_datasets/h_scz_study --use-valid --extra-aug --save-models --valid-per-record --load-bendr-weigths --freeze-first-layers
+linear --results-filename pAug_avpf_th06_dp0307_bw --dataset-directory ../BENDR_datasets/trivial_set --extra-aug --save-models --load-bendr-weigths
 # Train LO/MSO from scratch
 #python3 main.py linear --random-init --results-filename "new" --dataset-directory "datasets/decomp_study"
 #python3 main.py BENDR --random-init --results-filename "new" --dataset-directory "datasets/decomp_study"

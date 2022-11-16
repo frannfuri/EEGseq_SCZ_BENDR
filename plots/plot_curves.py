@@ -10,10 +10,9 @@ if __name__ == '__main__':
     n_folds = 6
     use_lims = True
     use_val = True
-    if use_val:
-        per_record_val = True
+    per_record_val = True
     if use_lims:
-        loss_lims = (0, 5)
+        loss_lims = (0, 1.5)
         acc_lims = (0.3, 0.95)
 
     ###############################################
@@ -63,7 +62,7 @@ if __name__ == '__main__':
         plt.plot(train_loss_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
             plt.plot(valid_loss_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
-    plt.title('Training loss\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)
+    plt.title('Training loss, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
     plt.legend(loc='best', ncol=2, fontsize=8)
     plt.xlabel('epoch')
     if use_lims:
@@ -80,7 +79,7 @@ if __name__ == '__main__':
         stds = np.std(np.array(valid_loss_curves_per_fold),0)
         plt.fill_between(list(range(n_epochs)), means - stds, means + stds, alpha=0.1, color="b")
         plt.plot(list(range(n_epochs)), means, "o-", color="b", label="Valid loss")
-    plt.title('Mean training loss\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)
+    plt.title('Mean training loss, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
     plt.legend(loc='best', fontsize=8)
     plt.xlabel('epoch')
     if use_lims:
@@ -92,7 +91,7 @@ if __name__ == '__main__':
         plt.plot(train_acc_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
             plt.plot(valid_acc_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
-    plt.title('Training accuracy\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)
+    plt.title('Training accuracy, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
     plt.legend(loc='best', ncol=2, fontsize=8)
     plt.xlabel('epoch')
     if use_lims:
@@ -109,7 +108,7 @@ if __name__ == '__main__':
         stds = np.std(valid_acc_curves_per_fold, 0)
         plt.fill_between(list(range(n_epochs)), means - stds, means + stds, alpha=0.1, color="b")
         plt.plot(list(range(n_epochs)), means, "o-", color="b", label="Valid acc")
-    plt.title('Mean training accuracy\n(samples {}s, overlap {}s)'.format(w_len, overlap), fontsize=10)
+    plt.title('Mean training accuracy, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
     plt.legend(loc='best', fontsize=8)
     plt.xlabel('epoch')
     if use_lims:
