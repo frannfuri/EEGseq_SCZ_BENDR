@@ -5,12 +5,12 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = '../rslts_pAug_avpf_vpr_th06_dp0307_len40ov30_'
-    name= 'h_scz_study_lr0.0001bs16'
-    n_folds = 6
+    path = './linear-rslts_pAug_avpf_th06_dp0307_bw_len40ov30_'
+    name= 'trivial_set_lr0.0003bs32'
+    n_folds = 1
     use_lims = True
-    use_val = True
-    per_record_val = True
+    use_val = False
+    per_record_val = False
     if use_lims:
         loss_lims = (0, 1.5)
         acc_lims = (0.3, 0.95)
@@ -115,6 +115,6 @@ if __name__ == '__main__':
         plt.ylim(acc_lims)
     plt.ylabel('accuracy')
 
-    plt.show(block=False)
+    plt.show() #block=False)
     a = 0
 
