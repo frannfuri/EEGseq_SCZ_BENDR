@@ -45,7 +45,7 @@ def f1_loss(y_true: torch.Tensor, y_pred: torch.Tensor, is_training=False) -> to
     f1.requires_grad = is_training
     return f1, precision, recall
 
-def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, device, num_epochs):
+def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, device, num_epochs, use_clip_grad):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -90,7 +90,7 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
                     labels = labels.to(torch.float64)
                     loss = criterion(outputs.squeeze(1), labels)
                     prepreds = torch.sigmoid(outputs)
-                    preds = (prepreds >= 0.5).long().squeeze(1)
+                    preds = (prepreds >= 0.4).long().squeeze(1)
 
 
                     # backward + optimize only if in train phase
@@ -111,6 +111,8 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
                     # TODO: WHY .PARAM_GROUPS[0][lr]?
                     train_metrics['lr'] = optimizer.param_groups[0]['lr']
                     loss.backward()
+                    if use_clip_grad:
+                        torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
                     optimizer.step()
                     train_log.append(train_metrics)
                     train_num_samples += 1 * inputs.size(0)
@@ -144,7 +146,7 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
         valid_log), best_epoch
 
 def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len,
-                        valid_per_record, extra_aug):
+                        valid_per_record, extra_aug, use_clip_grad):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -205,7 +207,7 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                     labels = labels.to(torch.float64)
                     loss = criterion(outputs.squeeze(1), labels)
                     prepreds = torch.sigmoid(outputs)
-                    preds = (prepreds >= 0.6).long().squeeze(1)
+                    preds = (prepreds >= 0.4).long().squeeze(1)
 
 
                     # backward + optimize only if in train phase
@@ -231,6 +233,8 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                         # TODO: WHY .PARAM_GROUPS[0][lr]?
                         train_metrics['lr'] = optimizer.param_groups[0]['lr']
                         loss.backward()
+                        if use_clip_grad:
+                            torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
                         optimizer.step()
                         train_log.append(train_metrics)
                         train_num_samples += 1 * inputs.size(0)

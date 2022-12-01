@@ -164,7 +164,7 @@ if __name__ == '__main__':
                                           freeze_encoder=args.freeze_bendr_encoder, device=device)
             if not args.freeze_bendr_encoder:
                 if args.freeze_first_layers:
-                    model.freeze_first_layers()
+                    model.freeze_first_layers(layers_to_freeze='first')
         if args.multi_gpu:
             model = nn.DataParallel(model)
         model = model.to(device)
@@ -184,10 +184,10 @@ if __name__ == '__main__':
         if args.use_valid:
             best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
                                             model, criterion, optimizer, dataloaders, device, num_epochs,
-                                            valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug)
+                                            valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, use_clip_grad=False)
         else:
             best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
-                                            model, criterion, optimizer, dataloaders, device, num_epochs)
+                                            model, criterion, optimizer, dataloaders, device, num_epochs, use_clip_grad=False)
 
         best_epoch_fold.append(best_epoch)
         train_df.to_csv("./{}-rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],

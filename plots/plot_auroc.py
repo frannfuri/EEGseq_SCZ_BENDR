@@ -8,14 +8,49 @@ from datasets import charge_dataset, recInfoDataset
 from architectures import LinearHeadBENDR_from_scratch
 from utils import all_same
 import numpy as np
+from sklearn.metrics import roc_curve, roc_auc_score
+
+def plot_roc_curves(path, n_folds):
+    fig, axs = plt.subplots(2,3, figsize=(15,8))
+    for f in range(n_folds):
+        y_prob_preds = np.load('./results/Y_PROB_PRED_f{}_{}.npy'.format(f, path))
+        y_targets = np.load('./results/Y_TARGET_f{}_{}.npy'.format(f, path))
+        fpr, tpr, thrs = roc_curve(y_targets, y_prob_preds)
+        auc = roc_auc_score(y_targets, y_prob_preds)
+        # plot ROC curve
+        axs[f//3, f%3].plot(fpr, tpr, color='darkorange', label="AUC={:.4f}".format(auc))
+        axs[f//3, f%3].set_ylabel('True Positive Rate')
+        axs[f//3, f%3].set_xlabel('False Positive Rate')
+        axs[f//3, f%3].set_title('ROC curve it. n° {}'.format(f+1), fontsize=10)
+        diff = []
+        for x in range(len(thrs)):
+            diff.append(tpr[x]-fpr[x])
+        max_id = np.argmax(diff)
+        axs[f//3, f%3].plot(fpr[max_id], tpr[max_id], 'r*', markersize=8, label='max(TPR-FPR) --> threshold {:.2f}'.format(thrs[max_id]))
+        # marcar threshold 0.4, 0.5 y 0.6
+        mark_ths = [0.4, 0.5, 0.6]
+        cs = ['b', 'g', 'fuchsia']
+        mark_ths_ids = []
+        for i in range(3):
+            diff_th = []
+            for t in thrs:
+                diff_th.append(np.abs(t-mark_ths[i]))
+            mark_ths_ids.append(np.argmin(diff_th))
+        for i in range(3):
+            axs[f//3, f%3].plot(fpr[mark_ths_ids[i]], tpr[mark_ths_ids[i]], '.', color= cs[i], markersize=8,
+                     label='threshold {:.2f}'.format(thrs[mark_ths_ids[i]]))
+        axs[f//3, f%3].legend(fontsize=8, loc=4)
+    plt.tight_layout()
+    plt.show()
+    return thrs
+
 
 if __name__ == '__main__':
     # PARAMETERS
-    data_path = '../../BENDR_datasets/h_scz_study'
+    data_path = '../../BENDR_datasets/trivial_set'  ### CHECK .yml IS OKAY!!
     n_folds = 6
-    model_path1 = '../linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_len40ov30_/best_model_f'
-    model_path2 = '_h_scz_study_lr0.0003bs16.pt'
-    th = 0.6
+    model_path1 = '../linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_th04_ep30_len40ov30_/best_model_f'
+    model_path2 = '_h_scz_study_lr0.0001bs8.pt'
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -77,31 +112,12 @@ if __name__ == '__main__':
         model.eval()
 
         # Predictions
-        all_recs_predictions = []
-        all_recs_targets = []
-        for rec_i in valid_record_names:
-            rec_predictions = []
-            rec_targets = []
-            for x, y, rec_name in validloader:
-                if rec_name[0] == rec_i:
-                    output = model(x)
-                    prepred = torch.sigmoid(output)
-                    pred = (prepred >= th).long().squeeze()
-                    rec_predictions.append(pred.item())
-                    rec_targets.append(y.item())
-            all_recs_predictions.append(rec_predictions)
-            assert all_same(rec_targets)
-            all_recs_targets.append(rec_targets)
-
-        fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(10,6))
-        for i in range(len(valid_record_names)):
-            marker_color = 'blue' if all_recs_targets[i][0] == 0 else 'red'
-            assert all_recs_targets[i][0] == 1 or all_recs_targets[i][0] == 0
-            axs[i].scatter(list(range(len(all_recs_predictions[i]))), all_recs_predictions[i],
-                           label='{} (target={})'.format(valid_record_names[i], all_recs_targets[i][0]),
-                           c=marker_color, s=20)
-            axs[i].set_title('Sample predictions of best model CV it. n°{}'.format(f + 1), fontsize=8)
-            axs[i].legend(fontsize=8)
-            axs[i].set_ylim((-0.5, 1.5))
-        plt.tight_layout()
-    plt.show()
+        ys_prob_pred = []
+        ys_target = []
+        for x, y, _ in validloader:
+            output = model(x)
+            prepred = torch.sigmoid(output)
+            ys_prob_pred.append(prepred.squeeze().detach().numpy())
+            ys_target.append(y.squeeze().detach().numpy())
+        np.save('../Y_PROB_PRED_f{}_{}.npy'.format(f, model_path1[3:-14]+model_path2[:-3]), ys_prob_pred)
+        np.save('../Y_TARGET_f{}_{}.npy'.format(f, model_path1[3:-14]+model_path2[:-3]), ys_target)

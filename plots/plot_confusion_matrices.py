@@ -8,6 +8,8 @@ from datasets import charge_dataset, recInfoDataset
 from architectures import LinearHeadBENDR_from_scratch
 from utils import all_same
 import numpy as np
+from mlxtend.plotting import plot_confusion_matrix
+from utils import plot_cm_valid_per_record
 
 if __name__ == '__main__':
     # PARAMETERS
@@ -24,7 +26,8 @@ if __name__ == '__main__':
     with open(data_path + '/info.yml') as infile:
         data_settings = yaml.load(infile, Loader=yaml.FullLoader)
     valid_sets_path = data_settings['valid_sets_path']
-    with open('../{}'.format(valid_sets_path), newline='') as f:
+
+    with open('../'+valid_sets_path, newline='') as f:
         reader = csv.reader(f)
         valid_sets = list(reader)
 
@@ -52,7 +55,7 @@ if __name__ == '__main__':
     num_cls = data_settings['num_cls']
     samples_tlen = data_settings['tlen']
 
-
+    all_folds_cms = torch.zeros(num_cls, num_cls)
     for f in range(n_folds):
         valid_set = valid_sets[f]
         valid_ids = [i for i in range(len(sorted_record_names)) if (sorted_record_names[i][:11] in valid_sets[f])]
@@ -71,37 +74,68 @@ if __name__ == '__main__':
                                              classifier_layers=1, return_features=False,
                                              # IF USE MASK OR NOT
                                              not_use_mask_train=False)
-
         model_path = '{}{}{}'.format(model_path1, f, model_path2)
         model.load_state_dict(torch.load(model_path, map_location=device))
         model.eval()
 
-        # Predictions
-        all_recs_predictions = []
-        all_recs_targets = []
-        for rec_i in valid_record_names:
-            rec_predictions = []
-            rec_targets = []
-            for x, y, rec_name in validloader:
-                if rec_name[0] == rec_i:
-                    output = model(x)
-                    prepred = torch.sigmoid(output)
-                    pred = (prepred >= th).long().squeeze()
-                    rec_predictions.append(pred.item())
-                    rec_targets.append(y.item())
-            all_recs_predictions.append(rec_predictions)
-            assert all_same(rec_targets)
-            all_recs_targets.append(rec_targets)
+        confusion_matrix = torch.zeros(num_cls, num_cls)
+        model.to(device)
 
-        fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(10,6))
-        for i in range(len(valid_record_names)):
-            marker_color = 'blue' if all_recs_targets[i][0] == 0 else 'red'
-            assert all_recs_targets[i][0] == 1 or all_recs_targets[i][0] == 0
-            axs[i].scatter(list(range(len(all_recs_predictions[i]))), all_recs_predictions[i],
-                           label='{} (target={})'.format(valid_record_names[i], all_recs_targets[i][0]),
-                           c=marker_color, s=20)
-            axs[i].set_title('Sample predictions of best model CV it. n°{}'.format(f + 1), fontsize=8)
-            axs[i].legend(fontsize=8)
-            axs[i].set_ylim((-0.5, 1.5))
-        plt.tight_layout()
+        valid_name_analyze = '0'
+        valids_preds_ = []
+        valid_targets_ = []
+        valid_names_ = []
+        with torch.no_grad():
+            for i, (inputs, classes, rec_info) in enumerate(validloader):
+                inputs = inputs.to(device)
+                classes = classes.to(device)
+                outputs = model(inputs)
+                prepreds = torch.sigmoid(outputs)
+                preds = (prepreds >= th).long().squeeze()
+
+                if valid_name_analyze != rec_info[0]:
+                    if valid_name_analyze != '0':
+                        valids_preds_.append(one_record_valid_predictions)
+                        valid_targets_.append(one_record_valid_targets)
+                    one_record_valid_predictions = []
+                    one_record_valid_targets = []
+                    valid_names_.append(rec_info[0])
+                    valid_name_analyze = rec_info[0]
+                assert (preds.item() == 1 or preds.item() == 0) and (  # sanity check
+                        classes.item() == 1 or classes.item() == 0)
+                one_record_valid_predictions.append(preds.item())
+                one_record_valid_targets.append(classes.item())
+        valids_preds_.append(one_record_valid_predictions)
+        valid_targets_.append(one_record_valid_targets)
+
+        valid_preds_subseg_conclusion = []
+        valid_targets_subseg_conclusion = []
+        for i in range(len(valid_targets_)):
+            assert all_same(valid_targets_[i])
+            assert len(valid_targets_[i]) == len(valids_preds_[i])
+            index_count = 0
+            len_subsegment = len(valid_targets_[i])//3
+            for j in range(3):
+                subseg_preds_ = valids_preds_[i][index_count:(index_count+len_subsegment)]
+                subseg_target_ = valid_targets_[i][0]
+                assert np.mean(subseg_preds_) >= 0 and np.mean(subseg_preds_) <= 1
+                if np.mean(subseg_preds_) >= 0.5:
+                    valid_preds_subseg_conclusion.append(1)
+                else:
+                    valid_preds_subseg_conclusion.append(0)
+                valid_targets_subseg_conclusion.append(int(subseg_target_))
+                index_count += len_subsegment
+
+        for t, p in zip(torch.tensor(valid_targets_subseg_conclusion).view(-1), torch.tensor(valid_preds_subseg_conclusion).view(-1)):
+            confusion_matrix[t.long(), p.long()] += 1
+        all_folds_cms += confusion_matrix
+    figure, ax = plot_confusion_matrix(conf_mat=all_folds_cms.detach().cpu().numpy(),
+                                       class_names=['low + sympts', 'high + sympts'],
+                                       show_absolute=True, show_normed=False, colorbar=True)
+    plt.title('Sum of confusion matrices in validation set for each "best model" in CV')
+    plt.ylim([1.5, -0.5])
+    plt.tight_layout()
     plt.show()
+
+
+

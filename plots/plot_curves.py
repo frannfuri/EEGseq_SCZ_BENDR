@@ -115,6 +115,6 @@ if __name__ == '__main__':
         plt.ylim(acc_lims)
     plt.ylabel('accuracy')
 
-    plt.show() #block=False)
+    plt.show(block=False)
     a = 0
 
