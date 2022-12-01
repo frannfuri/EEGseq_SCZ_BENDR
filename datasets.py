@@ -11,7 +11,7 @@ from utils import InstanceTransform, MappingDeep1010, TemporalInterpolation, To1
 from extras import *
 
 def eeglab_set_to_array_epochs(path, label, tlen, overlap, data_max, data_min,
-                        chns_consider, apply_winsor):
+                        chns_consider, apply_winsor, new_sfreq):
     new_raw = mne.io.read_raw_eeglab(path, preload=True)
 
     # Consider only some channels
@@ -20,7 +20,7 @@ def eeglab_set_to_array_epochs(path, label, tlen, overlap, data_max, data_min,
 
     print('Procesing the epochs...')
     epochs_one_rec_instance = EEGrecord_instance_divide_in_epochs(raw=new_raw, data_max=data_max, data_min=data_min, tlen=tlen,
-                                                         overlap=overlap, apply_winsor=apply_winsor, label=label)
+                                                         overlap=overlap, apply_winsor=apply_winsor, label=label, new_sfreq=new_sfreq)
     is_first_epoch = True
     for ep_id in range(0, len(epochs_one_rec_instance)):
         if is_first_epoch:
@@ -37,7 +37,7 @@ def eeglab_set_to_array_epochs(path, label, tlen, overlap, data_max, data_min,
 
 
 
-def charge_dataset(directory, tlen, overlap, data_max, data_min, chns_consider, labels_path, target_f, apply_winsor):
+def charge_dataset(directory, tlen, overlap, data_max, data_min, chns_consider, labels_path, target_f, apply_winsor, new_sfreq):
     sorted_record_names = []
     array_epochs_all_records = []
     for root, folders, _ in os.walk(directory):
@@ -55,7 +55,7 @@ def charge_dataset(directory, tlen, overlap, data_max, data_min, chns_consider, 
                                                                         label=label,
                                                                         tlen=tlen, overlap=overlap, data_max=data_max,
                                                                         data_min=data_min, chns_consider=chns_consider,
-                                                                        apply_winsor=apply_winsor)
+                                                                        apply_winsor=apply_winsor, new_sfreq=new_sfreq)
                         sorted_record_names = [*sorted_record_names, *epochs_names]
                         array_epochs_all_records.append((array_epochs_X_one_rec, array_epochs_Y_one_rec))
     return array_epochs_all_records, sorted_record_names

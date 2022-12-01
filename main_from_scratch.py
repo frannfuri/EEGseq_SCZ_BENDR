@@ -43,6 +43,8 @@ if __name__ == '__main__':
                                                                  'to avoid overfitting.')
     parser.add_argument('--freeze-first-layers', action='store_true', help = "Whether to keep the 3 first layers of the encoder stage frozen. "
                             "Will only be done if bendr weigths are loaded and when using bendr encoder arch.")
+    parser.add_argument('--input-sfreq', default=256,
+                        help='Sampling frequency to transform the EEG to input to the network.')
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -66,7 +68,7 @@ if __name__ == '__main__':
                                                   data_max=data_settings['data_max'], data_min=data_settings['data_min'],
                                                   chns_consider=data_settings['chns_to_consider'],
                                                   labels_path=data_settings['labels_path'], target_f=data_settings['target_feature'],
-                                                  apply_winsor=data_settings['apply_winsorising'])
+                                                  apply_winsor=data_settings['apply_winsorising'], new_sfreq=args.input_sfreq)
 
     # Reorder the Xs and Ys data
     is_first_rec = True
@@ -138,7 +140,7 @@ if __name__ == '__main__':
 
         # Model
         if args.model == 'linear':
-            model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
+            model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512, projection_head=False,
                                                  # DROPOUTS
                                         enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
@@ -149,7 +151,7 @@ if __name__ == '__main__':
                                                  # IF USE MASK OR NOT
                                         not_use_mask_train=False)
         elif args.model == 'BENDR':
-            model = BENDRClassification_from_scratch(1, samples_len=samples_tlen * 256, n_chn=20,
+            model = BENDRClassification_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512,
                                         contextualizer_hidden=3076, projection_head=False,
                                         new_projection_layers=0, dropout=0., trial_embeddings=None, layer_drop=0,
