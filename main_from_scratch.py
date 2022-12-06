@@ -44,7 +44,10 @@ if __name__ == '__main__':
     parser.add_argument('--freeze-first-layers', action='store_true', help = "Whether to keep the 3 first layers of the encoder stage frozen. "
                             "Will only be done if bendr weigths are loaded and when using bendr encoder arch.")
     parser.add_argument('--input-sfreq', default=256,
-                        help='Sampling frequency to transform the EEG to input to the network.')
+                        help='Sampling frequency to transform the EEG to input to the network.', type=int)
+    parser.add_argument('--own-init', default=None,
+                        help="Load my own pretrained weigths, for the complete model.")
+
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -167,6 +170,12 @@ if __name__ == '__main__':
             if not args.freeze_bendr_encoder:
                 if args.freeze_first_layers:
                     model.freeze_first_layers(layers_to_freeze='first')
+        elif args.own_init is not None:
+            model.load_state_dict(torch.load(args.own_init, map_location=device))
+            for param in model.parameters():
+                param.requires_grad = True
+            model.enc_augment.freeze_enc_aug(freeze=False)
+
         if args.multi_gpu:
             model = nn.DataParallel(model)
         model = model.to(device)

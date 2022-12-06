@@ -17,7 +17,8 @@ if __name__ == '__main__':
     n_folds = 6
     model_path1 = '../linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_len40ov30_/best_model_f'
     model_path2 = '_h_scz_study_lr0.0003bs16.pt'
-    th = 0.6
+    th = 0.4
+    n_divisions_segments = 4
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -114,8 +115,8 @@ if __name__ == '__main__':
             assert all_same(valid_targets_[i])
             assert len(valid_targets_[i]) == len(valids_preds_[i])
             index_count = 0
-            len_subsegment = len(valid_targets_[i])//3
-            for j in range(3):
+            len_subsegment = len(valid_targets_[i])//n_divisions_segments
+            for j in range(n_divisions_segments):
                 subseg_preds_ = valids_preds_[i][index_count:(index_count+len_subsegment)]
                 subseg_target_ = valid_targets_[i][0]
                 assert np.mean(subseg_preds_) >= 0 and np.mean(subseg_preds_) <= 1

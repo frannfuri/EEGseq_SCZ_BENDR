@@ -15,7 +15,7 @@ if __name__ == '__main__':
     n_folds = 6
     model_path1 = '../linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_len40ov30_/best_model_f'
     model_path2 = '_h_scz_study_lr0.0003bs16.pt'
-    th = 0.6
+    th = 0.4
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")

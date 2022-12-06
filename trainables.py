@@ -146,7 +146,7 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
         valid_log), best_epoch
 
 def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len,
-                        valid_per_record, extra_aug, use_clip_grad):
+                        valid_per_record, extra_aug, use_clip_grad, n_divisions_segments=4):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -279,8 +279,8 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                     assert all_same(valid_targets_[i_])
                     assert len(valid_targets_[i_]) == len(valids_preds_[i_])
                     index_count_ = 0
-                    len_subsegment_ = len(valid_targets_[i_])//3
-                    for j_ in range(3):
+                    len_subsegment_ = len(valid_targets_[i_])//n_divisions_segments
+                    for j_ in range(n_divisions_segments):
                         subsegment_preds_ = valids_preds_[i_][index_count_:(index_count_+len_subsegment_)]
                         subsegment_corrects_ = 0
                         for pred_ii in subsegment_preds_:

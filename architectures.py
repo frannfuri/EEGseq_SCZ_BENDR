@@ -387,6 +387,14 @@ class EncodingAugment_from_scratch(nn.Module):
         x = self.input_conditioning(x + self.relative_position(x))
         return x
 
+    def freeze_enc_aug(self, freeze=True):
+        if freeze:
+            for param in self.parameters():
+                param.requires_grad = False
+        else:
+            for param in self.parameters():
+                param.requires_grad = True
+
     def init_from_contextualizer(self, filename, device=None):
         state_dict = torch.load(filename, map_location=device)
         self.load_state_dict(state_dict, strict=False)
