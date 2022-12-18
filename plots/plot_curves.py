@@ -5,12 +5,12 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = './linear-rslts_pAug_avpf_th06_dp0307_bw_len40ov30_'
-    name= 'trivial_set_lr0.0003bs32'
-    n_folds = 1
+    path = '../results/linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_th04_ep30_len40ov30_'
+    name= 'h_scz_study_lr0.0001bs8'
+    n_folds = 6
     use_lims = True
-    use_val = False
-    per_record_val = False
+    use_val = True
+    per_record_val = True
     if use_lims:
         loss_lims = (0, 1.5)
         acc_lims = (0.3, 0.95)

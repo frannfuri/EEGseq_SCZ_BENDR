@@ -3,6 +3,7 @@ import yaml
 import mne
 from architectures import ConvEncoderBENDR_from_scratch
 from datasets import charge_dataset, recInfoDataset
+from collections import OrderedDict
 
 import matplotlib.pyplot as plt
 from mpl_toolkits.mplot3d import Axes3D
@@ -27,7 +28,7 @@ def flat_latent_representation(model, dataset):
 
         list_sorted_rec_names.append(rec_name)
         targets_sorted.append(y)
-        outputs_sorted.append(x)
+        outputs_sorted.append(output)
         first_outputs.append(output_)
     return outputs_sorted, targets_sorted, list_sorted_rec_names, first_outputs
 
@@ -87,19 +88,19 @@ def plot_latent_matrix_per_record(enc_output, all_records, record_name):
 
 if __name__ == '__main__':
     ####PARAMETERS####
-    dataset_name = 'h_scz_study'#'decomps_SA047' #'decomps_SA047'
+    dataset_name = 'decomp_study_SA010'
     w_len = 40
-    class_names = ['HC', 'SCZ'] #['standard + symptoms', 'high + symptoms']
+    class_names = ['standard + symptoms', 'high + symptoms'] #['HC', 'SCZ']
     use_3d = True
 
     ######
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
     print('---Using ' + str(device) + 'device---')
 
-    flat_outputs = torch.load('./results/{}_{}_flat_output.pt'.format(dataset_name, w_len), map_location=device)
-    rec_names = torch.load('./results/{}_{}_rec.pt'.format(dataset_name, w_len), map_location=device)
-    targets = torch.load('./results/{}_{}_target.pt'.format(dataset_name, w_len), map_location=device)
-    outputs = torch.load('./results/{}_{}_output.pt'.format(dataset_name, w_len), map_location=device)
+    flat_outputs = torch.load('./{}_{}_flat_output.pt'.format(dataset_name, w_len), map_location=device)
+    rec_names = torch.load('./{}_{}_rec.pt'.format(dataset_name, w_len), map_location=device)
+    targets = torch.load('./{}_{}_target.pt'.format(dataset_name, w_len), map_location=device)
+    outputs = torch.load('./{}_{}_output.pt'.format(dataset_name, w_len), map_location=device)
 
     np_flat_outputs = []
     for e in flat_outputs:
@@ -134,9 +135,13 @@ if __name__ == '__main__':
                        'SA000_day29', 'SA000_day22',
                        'SA000_day32', 'SA000_day33']
 
-    elif dataset_name == 'decomps_SA047':
+    elif dataset_name == 'decomp_study_SA047':
         rec_names_0 = ['SA047_day1_', 'SA047_day2_', 'SA047_day3_', 'SA047_day4_', 'SA047_day5_']
         rec_names_1 = ['SA047_day6_', 'SA047_day7_', 'SA047_day9_', 'SA047_day13']
+
+    elif dataset_name == 'decomp_study_SA010':
+        rec_names_0 = ['SA010_day6_', 'SA010_day7_', 'SA010_day9_', 'SA010_day11', 'SA010_day12', 'SA010_day13']
+        rec_names_1 = ['SA010_day1_', 'SA010_day3_', 'SA010_day5_']
 
     else:
         assert 1 == 0
@@ -218,42 +223,3 @@ if __name__ == '__main__':
             w_len, class_names[1], class_names[0]), fontsize=10)
     plt.show(block=False)
     a = 0
-
-
-###TO OBTAIN .pt FILES INTO THE CLUSTER
-'''
-if __name__ == '__main__':
-# PARAMETERSSSS
-dataset_directory = '../BENDR_datasets/h_scz_study'
-########################
-
-device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
-print('---Using ' + str(device) + 'device---')
-
-model = ConvEncoderBENDR_from_scratch(20, 512, projection_head=False, dropout=0)
-model.load('../BENDR_datasets/encoder.pt', strict=True, device=device)
-model.eval()
-
-with open(dataset_directory + '/info.yml') as infile:
-    data_settings = yaml.load(infile, Loader=yaml.FullLoader)
-
-array_epochs_all_records, sorted_record_names = charge_dataset(directory=dataset_directory,
-                                          tlen=data_settings['tlen'], overlap=data_settings['overlap_len'],
-                                          data_max=data_settings['data_max'], data_min=data_settings['data_min'],
-                                          chns_consider=data_settings['chns_to_consider'],
-                                          labels_path=data_settings['labels_path'], target_f=data_settings['target_feature'],
-                                          apply_winsor=data_settings['apply_winsorising'])
-
-# Reorder the Xs and Ys data
-is_first_rec = True
-for rec in array_epochs_all_records:
-    if is_first_rec:
-        all_X = rec[0]
-        all_y = rec[1]
-        is_first_rec = False
-    else:
-        all_X = torch.cat((all_X, rec[0]), dim=0)
-        all_y = torch.cat((all_y, rec[1]), dim=0)
-
-dataset = recInfoDataset(all_X, all_y, sorted_record_names)
-'''

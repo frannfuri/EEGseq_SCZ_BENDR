@@ -900,3 +900,187 @@ class Parcial_LinearHeadBENDR_from_scratch(nn.Module):
         self.load_encoder(encoder_file, strict=strict, freeze=freeze_encoder, device=device)
         self.enc_augment.init_from_contextualizer(contextualizer_file, device=device)
 
+
+class LongLinearHeadBENDR_from_scratch(nn.Module):
+
+    @property
+    def num_features_for_classification(self):
+        return self.encoder_h * self.pool_length
+
+    def features_forward(self, x):
+        x = self.encoder(x)
+        x = self.enc_augment(x)
+        x = self.summarizer(x)
+        return self.extended_classifier(x)
+
+    def __init__(self, n_targets, samples_len, n_chn, encoder_h=512, projection_head=False, enc_do=0.1, feat_do=0.4,
+                 pool_length=4, mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
+                 classifier_layers=1, return_features=True, not_use_mask_train=False):
+        if classifier_layers < 1:
+            self.pool_length = pool_length
+            self.encoder_h = 3 * encoder_h
+        else:
+            self.pool_length = pool_length // classifier_layers
+            self.encoder_h = encoder_h
+
+        super().__init__()
+        self.samples_len = samples_len
+        self.n_chn = n_chn
+        self.return_features = return_features
+        self.n_targets = n_targets
+        self.make_new_classification_layer()
+        self._init_state = self.state_dict()
+        self.use_mask_train = not not_use_mask_train
+        ##
+
+        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head, dropout=enc_do)
+        encoded_samples = self.encoder.downsampling_factor(samples_len)
+
+        mask_t_span = mask_t_span if mask_t_span > 1 else int(mask_t_span * encoded_samples)
+        # Important for short things like P300
+        mask_t_span = 0 if encoded_samples < 2 else mask_t_span
+        mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
+
+        self.enc_augment = EncodingAugment_from_scratch(encoder_h, mask_p_t, mask_p_c, mask_c_span=mask_c_span,
+                                           mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
+        tqdm.tqdm.write(self.encoder.description(None, samples_len) + " | {} pooled".format(pool_length))  # sfreq ?
+        self.summarizer = nn.AdaptiveAvgPool1d(pool_length)
+
+        classifier_layers = [self.encoder_h * self.pool_length for i in range(classifier_layers)] if \
+            not isinstance(classifier_layers, (tuple, list)) else classifier_layers
+        classifier_layers.insert(0, 3 * encoder_h * pool_length)
+        self.extended_classifier = nn.Sequential(Flatten())
+        for i in range(1, len(classifier_layers)):
+            self.extended_classifier.add_module("ext-classifier-{}".format(i), nn.Sequential(
+                #nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
+                nn.AdaptiveAvgPool1d(classifier_layers[i]), #
+                nn.Dropout(feat_do),
+                nn.ReLU(),
+                nn.BatchNorm1d(classifier_layers[i]),
+            ))
+
+    def internal_loss(self, forward_pass_tensors):
+        return None
+
+    def clone(self):
+        """
+        Standard way to copy models, weights and all.
+        """
+        return deepcopy(self)
+
+    def reset(self):
+        self.load_state_dict(self._init_state)
+
+    def forward(self, *x):
+        features = self.features_forward(*x)
+        if self.return_features:
+            return self.classifier_forward(features), features
+        else:
+            return self.classifier_forward(features)
+
+    def make_new_classification_layer(self):
+        """
+        Make a distinction between the classification layer(s) and the rest of the network. Using a basic
+        formulation of a network being composed of two parts feature_extraction & classifier.
+        This method implement the classification side, so that methods like :py:meth:`freeze_features` works
+        as intended.
+        Anything besides a layer that just flattens anything incoming to a vector and Linearly weights this to
+        the target should override this method, and there should be a variable called `self.classifier`
+        """
+        preclassifier0 = nn.Linear(self.num_features_for_classification, self.num_features_for_classification//2)
+        classifier0 = nn.Linear(self.num_features_for_classification//2, self.n_targets)
+        #nn.init.xavier_normal_(classifier.weight)
+        #classifier.bias.data.zero_()
+        # TODO: THIS FLATTEN IS REDUNDANT?
+        self.classifier = nn.Sequential(Flatten(), preclassifier0, classifier0)
+
+    def freeze_features(self, unfreeze=False, freeze_classifier=False):
+        """
+        Sometimes, the features learned by a model in one domain can be applied to another case.
+
+        This method freezes (or un-freezes) all but the `classifier` layer. So that any further training
+        doesnt (or does if unfreeze=True) affect these weights.
+
+        Parameters
+        ----------
+        unfreeze : bool
+                   To unfreeze weights after a previous call to this.
+        freeze_classifier: bool
+                   Commonly, the classifier layer will not be frozen (default). Setting this to `True` will freeze this
+                   layer too.
+        """
+        for param in self.parameters():
+            param.requires_grad = unfreeze
+
+        if isinstance(self.classifier, nn.Module) and not freeze_classifier:
+            for param in self.classifier.parameters():
+                param.requires_grad = True
+
+    # @property
+    # def num_features_for_classification(self):
+    #    raise NotImplementedError
+
+    def freeze_first_layers(self, layers_to_freeze=None, unfreeze=False):
+        '''
+        Parameters
+        ----------
+        unfreeze : bool
+                   To unfreeze weights after a previous call to this.
+        '''
+        if layers_to_freeze != 'first' and layers_to_freeze != 'threefirst' and layers_to_freeze != 'encoder':
+            assert 1 == 0
+        print('Freeze {} layers!!'.format(layers_to_freeze))
+        if layers_to_freeze == 'first':
+            for name, param in self.named_parameters():
+                if param.requires_grad:
+                    if ('Encoder_0' in name): # or ('Encoder_1' in name) or ('Encoder_2' in name):
+                        param.requires_grad = False
+        elif layers_to_freeze == 'threefirst':
+            for name, param in self.named_parameters():
+                if param.requires_grad:
+                    if ('Encoder_0' in name) or ('Encoder_1' in name) or ('Encoder_2' in name):
+                        param.requires_grad = False
+        elif layers_to_freeze == 'encoder':
+            for name, param in self.named_parameters():
+                if param.requires_grad:
+                    if ('Encoder' in name):
+                        param.requires_grad = False
+        else:
+            assert 1 == 0
+        ### GROUP NORM??? TODO:
+
+
+
+    def classifier_forward(self, features):
+        return self.classifier(features)
+
+    # def features_forward(self, x):
+    #    raise NotImplementedError
+
+    def load(self, filename, include_classifier=False, freeze_features=True):
+        state_dict = torch.load(filename)
+        if not include_classifier:
+            for key in [k for k in state_dict.keys() if 'classifier' in k]:
+                state_dict.pop(key)
+        self.load_state_dict(state_dict, strict=False)
+        if freeze_features:
+            self.freeze_features()
+
+    def save(self, filename, ignore_classifier=False):
+        state_dict = self.state_dict()
+        if ignore_classifier:
+            for key in [k for k in state_dict.keys() if 'classifier' in k]:
+                state_dict.pop(key)
+        print("Saving to {} ...".format(filename))
+        torch.save(state_dict, filename)
+
+    def load_encoder(self, encoder_file, freeze=False, strict=True, device=None):
+        self.encoder.load(encoder_file, strict=strict, device=device)
+        self.encoder.freeze_features(not freeze)
+        print("Loaded {}".format(encoder_file))
+
+    def load_pretrained_modules(self, encoder_file='./datasets/encoder.pt',
+                                contextualizer_file='./datasets/contextualizer.pt',
+                                strict=False, freeze_encoder=True, device=None):
+        self.load_encoder(encoder_file, strict=strict, freeze=freeze_encoder, device=device)
+        self.enc_augment.init_from_contextualizer(contextualizer_file, device=device)

@@ -146,7 +146,7 @@ if __name__ == '__main__':
             model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512, projection_head=False,
                                                  # DROPOUTS
-                                        enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                        enc_do=0.5, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                         pool_length=4,
                                                  # MASKS LENGHTS
                                         mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
@@ -164,12 +164,13 @@ if __name__ == '__main__':
         else:
             assert 1 == 0
 
+        assert not ((args.load_bendr_weigths == True) and (args.own_init is not None))
         if args.load_bendr_weigths:
             model.load_pretrained_modules('../BENDR_datasets/encoder.pt', '../BENDR_datasets/contextualizer.pt',
                                           freeze_encoder=args.freeze_bendr_encoder, device=device)
             if not args.freeze_bendr_encoder:
                 if args.freeze_first_layers:
-                    model.freeze_first_layers(layers_to_freeze='first')
+                    model.freeze_first_layers(layers_to_freeze='threefirst')
         elif args.own_init is not None:
             model.load_state_dict(torch.load(args.own_init, map_location=device))
             for param in model.parameters():

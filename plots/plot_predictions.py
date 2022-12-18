@@ -11,10 +11,10 @@ import numpy as np
 
 if __name__ == '__main__':
     # PARAMETERS
-    data_path = '../../BENDR_datasets/h_scz_study'
-    n_folds = 6
-    model_path1 = '../linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_len40ov30_/best_model_f'
-    model_path2 = '_h_scz_study_lr0.0003bs16.pt'
+    data_path = '../../BENDR_datasets/decomp_study_SA025' #h_scz_study'
+    n_folds = 2
+    model_path1 = '../linear-rslts_avp_pAug_pretOwn_vpr_dp0507_f3f_th04_len40ov30_/best_model_f'
+    model_path2 = '_decomp_study_SA025_lr5e-05bs8.pt'
     th = 0.4
 
     #################################
@@ -36,7 +36,7 @@ if __name__ == '__main__':
                                                                    chns_consider=data_settings['chns_to_consider'],
                                                                    labels_path='../' + data_settings['labels_path'],
                                                                    target_f=data_settings['target_feature'],
-                                                                   apply_winsor=data_settings['apply_winsorising'])
+                                                                   apply_winsor=data_settings['apply_winsorising'], new_sfreq=256)
 
     # Reorder the Xs and Ys data
     is_first_rec = True
