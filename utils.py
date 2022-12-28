@@ -19,7 +19,7 @@ from torch.utils.data.sampler import BatchSampler
 from architectures import LinearHeadBENDR_from_scratch
 #from datasets import recInfoDataset
 
-MODEL_CHOICES = ['BENDR', 'linear']
+MODEL_CHOICES = ['BENDR', 'linear', 'longlinear']
 
 
 class BalancedBatchSampler(BatchSampler):
@@ -182,6 +182,16 @@ def min_max_normalize(x: torch.Tensor, low=-1, high=1):
     # Adjust for low/high bias and scale up
     x += (high + low) / 2
     return (high - low) * x
+
+def min_max_simple_norm(x, low=-1, high=1):
+    xmin = np.min(x)
+    xmax = np.max(x)
+    norm_x = (x - xmin)/(xmax - xmin)
+    # Now all scaled 0 -> 1, remove 0.5 bias
+    norm_x -= 0.5
+    # Adjust for low/high bias and scale up
+    norm_x += (high + low) / 2
+    return (high - low) * norm_x
 
 
 class MappingDeep1010(InstanceTransform):

@@ -11,10 +11,10 @@ import numpy as np
 
 if __name__ == '__main__':
     # PARAMETERS
-    data_path = '../../BENDR_datasets/decomp_study_SA025' #h_scz_study'
-    n_folds = 2
-    model_path1 = '../linear-rslts_avp_pAug_pretOwn_vpr_dp0507_f3f_th04_len40ov30_/best_model_f'
-    model_path2 = '_decomp_study_SA025_lr5e-05bs8.pt'
+    data_path = '../../BENDR_datasets/decomp_study_SA047' #h_scz_study'
+    n_folds = 4
+    model_path1 = '../linear-rslts_avp_pAug_pretOwn_vpr_dp0307_f3f_th04_len40ov30_/best_model_f'
+    model_path2 = '_decomp_study_SA047_lr5e-05bs8.pt'
     th = 0.4
 
     #################################
@@ -77,31 +77,41 @@ if __name__ == '__main__':
         model.eval()
 
         # Predictions
+        all_recs_predict_probabs = []
         all_recs_predictions = []
         all_recs_targets = []
         for rec_i in valid_record_names:
+            rec_predict_probabs = []
             rec_predictions = []
             rec_targets = []
             for x, y, rec_name in validloader:
                 if rec_name[0] == rec_i:
                     output = model(x)
                     prepred = torch.sigmoid(output)
+                    rec_predict_probabs.append(prepred)
                     pred = (prepred >= th).long().squeeze()
                     rec_predictions.append(pred.item())
                     rec_targets.append(y.item())
+            all_recs_predict_probabs.append(rec_predict_probabs)
             all_recs_predictions.append(rec_predictions)
             assert all_same(rec_targets)
             all_recs_targets.append(rec_targets)
 
-        fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(10,6))
+        fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(4,3))
         for i in range(len(valid_record_names)):
             marker_color = 'blue' if all_recs_targets[i][0] == 0 else 'red'
             assert all_recs_targets[i][0] == 1 or all_recs_targets[i][0] == 0
+            axs[i].set_yticks([0.25, 0.75], minor=True)
+            axs[i].set_yticks([0, 0.5, 1], minor=False)
+            axs[i].yaxis.grid(True, linestyle='--', which='major', linewidth=1)
+            axs[i].yaxis.grid(True, linestyle='--', which='minor')
+            axs[i].plot(list(range(len(all_recs_predict_probabs[i]))), all_recs_predict_probabs[i],
+                        label='probab.', linestyle='dashed', c='dimgrey')
             axs[i].scatter(list(range(len(all_recs_predictions[i]))), all_recs_predictions[i],
-                           label='{} (target={})'.format(valid_record_names[i], all_recs_targets[i][0]),
+                           label='{}\n(target={})'.format(valid_record_names[i], int(all_recs_targets[i][0])),
                            c=marker_color, s=20)
             axs[i].set_title('Sample predictions of best model CV it. n°{}'.format(f + 1), fontsize=8)
-            axs[i].legend(fontsize=8)
+            axs[i].legend(fontsize=8, loc='center left', bbox_to_anchor=(0.8, -0.2))
             axs[i].set_ylim((-0.5, 1.5))
         plt.tight_layout()
     plt.show()

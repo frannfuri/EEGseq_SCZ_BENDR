@@ -5,12 +5,13 @@ import yaml
 import os
 import csv
 from datasets import charge_dataset, standardDataset, recInfoDataset
-from architectures import Net, LinearHeadBENDR_from_scratch, BENDRClassification_from_scratch
+from architectures import Net, LongLinearHeadBENDR_from_scratch, LinearHeadBENDR_from_scratch, BENDRClassification_from_scratch
 from trainables import train_scratch_model, train_scratch_model_no_valid
 import numpy as np
 import seaborn as sn
 import pandas as pd
 import matplotlib.pyplot as plt
+from collections import OrderedDict
 from torch import nn
 from utils import comp_confusion_matrix, MODEL_CHOICES
 from mlxtend.plotting import plot_confusion_matrix
@@ -146,13 +147,24 @@ if __name__ == '__main__':
             model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512, projection_head=False,
                                                  # DROPOUTS
-                                        enc_do=0.5, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                        enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                         pool_length=4,
                                                  # MASKS LENGHTS
                                         mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
                                         classifier_layers=1, return_features=False,
                                                  # IF USE MASK OR NOT
                                         not_use_mask_train=False)
+        elif args.model == 'longlinear':
+            model = LongLinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
+                                                 encoder_h=512, projection_head=False,
+                                                 # DROPOUTS
+                                                 enc_do=0.3, feat_do=0.7,  # enc_do=0.1, feat_do=0.4,
+                                                 pool_length=4,
+                                                 # MASKS LENGHTS
+                                                 mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
+                                                 classifier_layers=1, return_features=False,
+                                                 # IF USE MASK OR NOT
+                                                 not_use_mask_train=False)
         elif args.model == 'BENDR':
             model = BENDRClassification_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512,
@@ -173,9 +185,22 @@ if __name__ == '__main__':
                     model.freeze_first_layers(layers_to_freeze='threefirst')
         elif args.own_init is not None:
             model.load_state_dict(torch.load(args.own_init, map_location=device))
+            '''
+            if not args.model == 'longlinear':
+                model.load_state_dict(torch.load(args.own_init, map_location=device))
+            else:
+                orig_ws = torch.load(args.own_init, map_location=device)
+                new_ws = OrderedDict()
+                for k, v in orig_ws.items():
+                    if k[:10] != 'classifier':
+                        new_ws[k] = v
+                model.load_state_dict(new_ws, strict=False)
+            '''
             for param in model.parameters():
                 param.requires_grad = True
             model.enc_augment.freeze_enc_aug(freeze=False)
+            if args.freeze_first_layers:
+                model.freeze_first_layers(layers_to_freeze='threefirst')
 
         if args.multi_gpu:
             model = nn.DataParallel(model)

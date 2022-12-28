@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
+from utils import min_max_simple_norm
 
 def PANSSp_from_SAPSg(saps_global):
     return 9.3264 +(1.1072*saps_global)
@@ -23,7 +24,7 @@ def SAPSg_from_PANSSp_array(panss_posit_array):
 # Use this when you dont have the labels binarized
 # BINARIZATION METHOD: SAPS FROM PANSS AND AVERAGE WITH REAL MEASURED SAPS
 if __name__ == '__main__':
-    labels_path = '../BENDR_datasets/labels/SA025_labels.csv'
+    labels_path = '../BENDR_datasets/labels/SA010_labels.csv'
     #################################
 
     labels_info = pd.read_csv(labels_path, index_col=0, decimal=',')
@@ -43,22 +44,15 @@ if __name__ == '__main__':
 
     mean_2_SAPS = (real_SAPS + pred_SAPS)/2
     ax.scatter(PANSS_posit, mean_2_SAPS, marker='x', c='r', s=40)
-    median_threshold = np.median(mean_2_SAPS)
-    ax.axhline(median_threshold, linestyle='dashed', linewidth=0.7, c='tomato')
     for i, txt in enumerate(rec_names):
         ax.annotate(txt[6:], (PANSS_posit[i], mean_2_SAPS[i]), fontsize=8)
     plt.xlabel('PANSS positive')
     plt.ylabel('SAPS global')
     plt.show(block=False)
-    new_col = []
-    for v in mean_2_SAPS:
-        if v > median_threshold:
-            new_col.append(1)
-        else:
-            new_col.append(0)
-    labels_info['real_and_pred_SAPS'] = new_col
+    new_col = min_max_simple_norm(mean_2_SAPS)
+    labels_info['real_and_pred_SAPS_norm'] = new_col
 
     ax.set_title('Labeling of {}'.format(labels_path[-16:-11]), fontsize=10)
-    #labels_info.to_csv(labels_path[:-4]+'2.csv')
+    labels_info.to_csv(labels_path[:-4]+'.csv')
     plt.show(block=False)
     a = 0
