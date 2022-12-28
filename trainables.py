@@ -45,9 +45,10 @@ def f1_loss(y_true: torch.Tensor, y_pred: torch.Tensor, is_training=False) -> to
     f1.requires_grad = is_training
     return f1, precision, recall
 
-def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, device, num_epochs, use_clip_grad):
+def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, device, num_epochs, type_task, use_clip_grad):
     since = time.time()
-
+    # DONT IMPLEMENTED YET
+    assert type_task != 'regressor'
     best_model_wts = copy.deepcopy(model.state_dict())
     best_epoch = 0
     best_acc = 0.0
@@ -146,12 +147,13 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
         valid_log), best_epoch
 
 def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len,
-                        valid_per_record, extra_aug, use_clip_grad, n_divisions_segments=4):
+                        valid_per_record, extra_aug,  type_task, use_clip_grad, n_divisions_segments=4):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
     best_epoch = 0
     best_acc = 0.0
+    best_loss = 999.999
 
     train_log = list()
     valid_log = list()
@@ -206,9 +208,11 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                     outputs = model(inputs)
                     labels = labels.to(torch.float64)
                     loss = criterion(outputs.squeeze(1), labels)
-                    prepreds = torch.sigmoid(outputs)
-                    preds = (prepreds >= 0.4).long().squeeze(1)
-
+                    if type_task == 'classifier':
+                        prepreds = torch.sigmoid(outputs)
+                        preds = (prepreds >= 0.4).long().squeeze(1)
+                    else:
+                        preds = outputs
 
                     # backward + optimize only if in train phase
                     if phase == 'train':
@@ -224,12 +228,13 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                         it += 1
                         train_metrics['loss'] = loss.item()
                         # TODO: REVISAR accuracy !!
-                        train_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
-                        # TODO: REVISAR F1score
-                        f1score, preciss, recall = f1_loss(labels, preds)
-                        train_metrics['f1score'] = f1score.item()
-                        train_metrics['preciss'] = preciss.item()
-                        train_metrics['recall'] = recall.item()
+                        if type_task == 'classifier':
+                            train_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
+                            # TODO: REVISAR F1score
+                            f1score, preciss, recall = f1_loss(labels, preds)
+                            train_metrics['f1score'] = f1score.item()
+                            train_metrics['preciss'] = preciss.item()
+                            train_metrics['recall'] = recall.item()
                         # TODO: WHY .PARAM_GROUPS[0][lr]?
                         train_metrics['lr'] = optimizer.param_groups[0]['lr']
                         loss.backward()
@@ -242,33 +247,35 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                         valid_metrics = OrderedDict()
                         valid_metrics['epoch'] = epoch
                         valid_metrics['loss'] = loss.item()
-                        if valid_per_record:
-                            if valid_name_analyze != rec_info[0]:
-                                if valid_name_analyze != '0':
-                                    valids_preds_.append(one_record_valid_predictions)
-                                    valid_targets_.append(one_record_valid_targets)
-                                one_record_valid_predictions = []
-                                one_record_valid_targets = []
-                                valid_names_.append(rec_info[0])
-                                valid_name_analyze = rec_info[0]
-                            assert (preds.item() == 1 or preds.item() == 0) and (   # sanity check
-                                    labels.item() == 1 or labels.item() == 0)
-                            one_record_valid_predictions.append(preds.item())
-                            one_record_valid_targets.append(labels.item())
-                        else:
-                            valid_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
-                        f1score, preciss, recall = f1_loss(labels, preds)
-                        valid_metrics['f1score'] = f1score.item()
-                        valid_metrics['preciss'] = preciss.item()
-                        valid_metrics['recall'] = recall.item()
+                        if type_task == 'classifier':
+                            if valid_per_record:
+                                if valid_name_analyze != rec_info[0]:
+                                    if valid_name_analyze != '0':
+                                        valids_preds_.append(one_record_valid_predictions)
+                                        valid_targets_.append(one_record_valid_targets)
+                                    one_record_valid_predictions = []
+                                    one_record_valid_targets = []
+                                    valid_names_.append(rec_info[0])
+                                    valid_name_analyze = rec_info[0]
+                                assert (preds.item() == 1 or preds.item() == 0) and (   # sanity check
+                                        labels.item() == 1 or labels.item() == 0)
+                                one_record_valid_predictions.append(preds.item())
+                                one_record_valid_targets.append(labels.item())
+                            else:
+                                valid_metrics['accuracy'] = (torch.sum(preds == labels.data) / inputs.size(0)).item()
+                            f1score, preciss, recall = f1_loss(labels, preds)
+                            valid_metrics['f1score'] = f1score.item()
+                            valid_metrics['preciss'] = preciss.item()
+                            valid_metrics['recall'] = recall.item()
                         valid_log.append(valid_metrics)
                         val_num_samples += 1 * inputs.size(0)
 
                 # statistics
                 running_loss += loss.item() * inputs.size(0)
-                if phase == 'train' or (phase == 'valid' and not valid_per_record):
-                    running_corrects += torch.sum(preds == labels.data)
-            if phase == 'valid' and valid_per_record:
+                if type_task == 'classifier':
+                    if phase == 'train' or (phase == 'valid' and not valid_per_record):
+                        running_corrects += torch.sum(preds == labels.data)
+            if phase == 'valid' and valid_per_record and type_task=='classifier':
                 valids_preds_.append(one_record_valid_predictions)
                 valid_targets_.append(one_record_valid_targets)
 
@@ -293,32 +300,50 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
 
             if phase == 'train':
                 epoch_loss = running_loss / train_num_samples
-                epoch_acc = running_corrects / train_num_samples
                 train_losses.append(epoch_loss)
-                train_accs.append(epoch_acc.item())
+                if type_task=='classifier':
+                    epoch_acc = running_corrects / train_num_samples
+                    train_accs.append(epoch_acc.item())
             else:
                 epoch_loss = running_loss / val_num_samples
-                if valid_per_record:
-                    epoch_acc = corr_/tot_
-                else:
-                    epoch_acc = running_corrects / val_num_samples
+                if type_task=='classifier':
+                    if valid_per_record:
+                        epoch_acc = corr_/tot_
+                    else:
+                        epoch_acc = running_corrects / val_num_samples
+                    valid_accs.append(epoch_acc)
                 valid_losses.append(epoch_loss)
-                valid_accs.append(epoch_acc)
 
-            print('[{}];   Acc.: {:.4};   Loss: {:.4f}.'.format(phase, epoch_acc, epoch_loss))
+            if type_task == 'classifier':
+                print('[{}];   Acc.: {:.4};   Loss: {:.4f}.'.format(phase, epoch_acc, epoch_loss))
+            else:
+                print('[{}];   Loss: {:.4f}.'.format(phase, epoch_loss))
 
             # deep copy the model
-            if phase == 'valid' and epoch_acc > best_acc:
-                best_acc = epoch_acc
-                best_model_wts = copy.deepcopy(model.state_dict())
-                best_epoch = epoch
+            if type_task=='classifier':
+                if phase == 'valid' and epoch_acc > best_acc:
+                    best_acc = epoch_acc
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    best_epoch = epoch
+            else:
+                if phase == 'valid' and epoch_loss < best_loss:
+                    best_loss = epoch_loss
+                    best_model_wts = copy.deepcopy(model.state_dict())
+                    best_epoch = epoch
         print()
     time_elapsed = time.time() - since
     print('Training complete in {:.0f}m {:.0f}s'.format(
         time_elapsed // 60, time_elapsed % 60))
-    print('Best val Acc: {:4f}'.format(best_acc))
+    if type_task == 'classifier':
+        print('Best val Acc: {:4f}'.format(best_acc))
+    else:
+        print('Lowest val Loss: {:4f}'.format(best_loss))
 
     # Load best model weights
     model.load_state_dict(best_model_wts)
-    return model, (train_accs, valid_accs), (train_losses, valid_losses), pd.DataFrame(train_log), pd.DataFrame(
-        valid_log), best_epoch
+    if type_task == 'classifier':
+        return model, (train_accs, valid_accs), (train_losses, valid_losses), pd.DataFrame(train_log), pd.DataFrame(
+            valid_log), best_epoch
+    else:
+        return model, (train_losses, valid_losses), pd.DataFrame(train_log), pd.DataFrame(
+            valid_log), best_epoch

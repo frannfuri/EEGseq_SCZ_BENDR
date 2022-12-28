@@ -20,6 +20,7 @@ from architectures import LinearHeadBENDR_from_scratch
 #from datasets import recInfoDataset
 
 MODEL_CHOICES = ['BENDR', 'linear', 'longlinear']
+TASK_CHOICES = ['classifier', 'regressor']
 
 
 class BalancedBatchSampler(BatchSampler):

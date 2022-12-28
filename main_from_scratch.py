@@ -13,13 +13,14 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from torch import nn
-from utils import comp_confusion_matrix, MODEL_CHOICES
+from utils import comp_confusion_matrix, MODEL_CHOICES, TASK_CHOICES
 from mlxtend.plotting import plot_confusion_matrix
 
 if __name__ == '__main__':
     # Arguments and preliminaries
     parser = argparse.ArgumentParser(description="Train models from simpler to more complex.")
     parser.add_argument('model', choices=MODEL_CHOICES)
+    parser.add_argument('task', choices=TASK_CHOICES)
     parser.add_argument('--multi-gpu', action='store_true', help='Distribute model over multiple GPUs')
     parser.add_argument('--num-workers', default=4, type=int, help='Number of dataloader workers.')
     parser.add_argument('--results-filename', default=None, help='What to name the spreadsheet produced with all '
@@ -64,6 +65,9 @@ if __name__ == '__main__':
     os.makedirs('./{}-rslts_'.format(args.model) + args.results_filename + '_len{}ov{}_'.format(
                                     data_settings['tlen'], data_settings['overlap_len']), exist_ok=True)
 
+    if args.task == 'regressor':
+        target_feature = data_settings['target_feature'] + '_norm'
+
     # Load dataset
     # list of len: n_records
     # each list[n] is of dim [n_segments, 20 , len_segments (256*tlen)]
@@ -71,7 +75,7 @@ if __name__ == '__main__':
                                                   tlen=data_settings['tlen'], overlap=data_settings['overlap_len'],
                                                   data_max=data_settings['data_max'], data_min=data_settings['data_min'],
                                                   chns_consider=data_settings['chns_to_consider'],
-                                                  labels_path=data_settings['labels_path'], target_f=data_settings['target_feature'],
+                                                  labels_path=data_settings['labels_path'], target_f=target_feature,
                                                   apply_winsor=data_settings['apply_winsorising'], new_sfreq=args.input_sfreq)
 
     # Reorder the Xs and Ys data
@@ -212,19 +216,31 @@ if __name__ == '__main__':
         else:
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
 
-        if args.ponderate_loss:
-            criterion = nn.BCEWithLogitsLoss(weigth=class_weigth)
+        if args.task == 'regressor':
+            criterion = nn.MSELoss()
         else:
-            criterion = nn.BCEWithLogitsLoss()
+            if args.ponderate_loss:
+                criterion = nn.BCEWithLogitsLoss(weigth=class_weigth)
+            else:
+                criterion = nn.BCEWithLogitsLoss()
 
         # Train
-        if args.use_valid:
-            best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
-                                            model, criterion, optimizer, dataloaders, device, num_epochs,
-                                            valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, use_clip_grad=False)
+        if args.task == 'classifier':
+            if args.use_valid:
+                best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
+                                                model, criterion, optimizer, dataloaders, device, num_epochs,
+                                                valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False)
+            else:
+                best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
+                                                model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False)
         else:
-            best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
-                                            model, criterion, optimizer, dataloaders, device, num_epochs, use_clip_grad=False)
+            if args.use_valid:
+                best_model, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
+                                                model, criterion, optimizer, dataloaders, device, num_epochs,
+                                                valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False)
+            else:
+                best_model, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
+                                                model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False)
 
         best_epoch_fold.append(best_epoch)
         train_df.to_csv("./{}-rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
