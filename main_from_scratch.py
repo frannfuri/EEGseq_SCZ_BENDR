@@ -67,6 +67,8 @@ if __name__ == '__main__':
 
     if args.task == 'regressor':
         target_feature = data_settings['target_feature'] + '_norm'
+    else:
+        target_feature = data_settings['target_feature']
 
     # Load dataset
     # list of len: n_records
@@ -243,19 +245,19 @@ if __name__ == '__main__':
                                                 model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False)
 
         best_epoch_fold.append(best_epoch)
-        train_df.to_csv("./{}-rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        train_df.to_csv("./{}-{}-rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs))
-        valid_df.to_csv("./{}-rslts_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        valid_df.to_csv("./{}-{}-rslts_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs))
-        with open('./{}-rslts_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        with open('./{}-{}-rslts_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_losses, f)
-        with open('./{}-rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+        with open('./{}-{}-rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                         fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_accs, f)
 
         if args.save_models:
-            torch.save(best_model.state_dict(), './{}-rslts_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.model, args.results_filename, data_settings['tlen'],
+            torch.save(best_model.state_dict(), './{}-{}-rslts_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.model, args.task, args.results_filename, data_settings['tlen'],
                                                                                         data_settings['overlap_len'], fold, args.dataset_directory.split('/')[-1], lr, bs))
     print('Best epoch for each of the cross-validations iterations:\n{}'.format(best_epoch_fold))
     plt.show()

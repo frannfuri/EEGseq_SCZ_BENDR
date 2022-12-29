@@ -5,7 +5,7 @@
 #python3 main_from_scratch.py longlinear --results-filename avp_pAug_bw_dp0307_f1f_th04 --dataset-directory ../BENDR_datasets/h_scz_study --extra-aug --save-models --load-bendr-weigths --freeze-first-layers
 #python3 main_from_scratch.py longlinear --results-filename avp_pAug_pretOwn_vpr_dp0507_f1f_th04 --dataset-directory ../BENDR_datasets/decomp_study_SA039 --extra-aug --save-models --own-init ./longlinear-rslts_avp_pAug_bw_dp0307_f1f_th04_len40ov30_/best_model_f0_h_scz_study_lr0.0001bs8.pt --use-valid --valid-per-record --freeze-first-layers
 
-python3 main_from_scratch.py linear classifier --results-filename avp_pAug_pretOwn_vpr_dp0307_f3f_th04_0 --dataset-directory ../BENDR_datasets/decomp_study_SA025 --extra-aug --save-models --own-init ./linear-rslts_avp_pAug_bw_dp0307_f1f_th04_len40ov30_/best_model_f0_h_scz_study_lr0.0001bs8.pt --use-valid --valid-per-record --freeze-first-layers
+python3 main_from_scratch.py linear classifier --results-filename avp_pAug_pretOwn_vpr_dp0307_f3f_th04_0 --dataset-directory ../BENDR_datasets/decomp_study_SA025 --extra-aug --save-models --own-init ../BENDR_datasets/linear-rslts_avp_pAug_bw_dp0307_f1f_th04_len40ov30_/best_model_f0_h_scz_study_lr0.0001bs8.pt --use-valid --valid-per-record --freeze-first-layers
 
 # Train LO/MSO from scratch
 #python3 main.py linear --random-init --results-filename "new" --dataset-directory "datasets/decomp_study"

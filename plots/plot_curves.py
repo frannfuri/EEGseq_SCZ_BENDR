@@ -5,9 +5,9 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = '../results/linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_th04_ep30_len40ov30_'
-    name= 'h_scz_study_lr0.0001bs8'
-    n_folds = 6
+    path = '../linear-rslts_avp_pAug_pretOwn_vpr_dp0507_f0f_th04_len40ov30_'
+    name= 'decomp_study_SA010_lr5e-05bs8'
+    n_folds = 3
     use_lims = True
     use_val = True
     per_record_val = True

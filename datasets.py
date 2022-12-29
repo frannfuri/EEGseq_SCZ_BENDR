@@ -51,6 +51,8 @@ def charge_dataset(directory, tlen, overlap, data_max, data_min, chns_consider, 
                         target_info = target_info.to_dict()
                         target_info = target_info[target_f]
                         label = target_info[file[:11]]
+                        if isinstance(label, str):
+                            label = float(label)
                         array_epochs_X_one_rec, array_epochs_Y_one_rec, epochs_names = eeglab_set_to_array_epochs(path=os.path.join(root_day, file),
                                                                         label=label,
                                                                         tlen=tlen, overlap=overlap, data_max=data_max,
@@ -107,6 +109,7 @@ class EEGrecord_instance_divide_in_epochs(TorchDataset):
         self.new_sfreq = new_sfreq
         self.ch_names = raw.ch_names
         self.apply_winsor = apply_winsor
+        self.label = label
 
         ch_list = []
         for i in raw.ch_names:
@@ -114,7 +117,7 @@ class EEGrecord_instance_divide_in_epochs(TorchDataset):
         self.ch_list = np.array(ch_list, dtype='<U21')
 
         # Segment the recording
-        self.epochs = mne.make_fixed_length_epochs(raw, duration=tlen, overlap=overlap, id=label)
+        self.epochs = mne.make_fixed_length_epochs(raw, duration=tlen, overlap=overlap)
         self.epochs.drop_bad()
 
         self.tlen = tlen
@@ -173,7 +176,11 @@ class EEGrecord_instance_divide_in_epochs(TorchDataset):
                 # Winsorising
                 x[i, :] = np.clip(x[i, :], med - 3 * mad, med + 3 * mad)
 
-        y = torch.tensor(ep.events[0, -1]).squeeze().long()
+        #y = torch.tensor(ep.events[0, -1]).squeeze().long()
+        if isinstance(self.label, int):
+            y = torch.tensor(self.label).squeeze().long()
+        else:
+            y = torch.tensor(self.label).squeeze().float()
         return self._execute_transforms(x, y)
 
     def __len__(self):
@@ -192,9 +199,9 @@ class EEGrecord_instance_divide_in_epochs(TorchDataset):
         """
         return self.epoch_codes_to_class_labels
 
-    def get_targets(self):
-        return np.apply_along_axis(lambda x: self.epoch_codes_to_class_labels[x[0]], 1,
-                                   self.epochs.events[list(range(len(self.epochs))), -1, np.newaxis]).squeeze()
+    #def get_targets(self):
+    #    return np.apply_along_axis(lambda x: self.epoch_codes_to_class_labels[x[0]], 1,
+    #                               self.epochs.events[list(range(len(self.epochs))), -1, np.newaxis]).squeeze()
 
     def add_transform(self, transform_item):
         """
