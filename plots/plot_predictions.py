@@ -11,10 +11,10 @@ import numpy as np
 
 if __name__ == '__main__':
     # PARAMETERS
-    data_path = '../../BENDR_datasets/decomp_study_SA047' #h_scz_study'
-    n_folds = 4
-    model_path1 = '../linear-rslts_avp_pAug_pretOwn_vpr_dp0307_f3f_th04_len40ov30_/best_model_f'
-    model_path2 = '_decomp_study_SA047_lr5e-05bs8.pt'
+    data_path = '../../BENDR_datasets/decomp_study_SA010' #h_scz_study'
+    n_folds = 5
+    model_path1 = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0507_f1f_th04_len40ov30_/best_model_f'
+    model_path2 = '_decomp_study_SA010_lr5e-05bs8.pt'
     th = 0.4
 
     #################################

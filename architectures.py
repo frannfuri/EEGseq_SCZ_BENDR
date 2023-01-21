@@ -8,6 +8,7 @@ from math import ceil
 
 MODEL_CHOICES = ['BENDR', 'linear']
 
+
 # Layer type
 class Flatten(nn.Module):
     def forward(self, x):
@@ -49,6 +50,7 @@ def _make_mask(shape, p, total, span, allow_no_inds=False):
 
     return mask
 
+
 class _Hax(nn.Module):
     """T-fixup assumes self-attention norms are removed"""
 
@@ -57,6 +59,7 @@ class _Hax(nn.Module):
 
     def forward(self, x):
         return x
+
 
 # SIMPLER MODELS
 class Net(nn.Module):
@@ -68,8 +71,8 @@ class Net(nn.Module):
         self.fc1 = nn.Linear(16 * 638, 120)
         self.fc2 = nn.Linear(120, 84)
         self.fc3 = nn.Linear(84, 1)
-        #nn.init.xavier_normal_(self.fc3.weight)
-        #self.fc3.bias.data.zero_()
+        # nn.init.xavier_normal_(self.fc3.weight)
+        # self.fc3.bias.data.zero_()
 
     def forward(self, x):
         # dim [16, 20, 10240]
@@ -77,12 +80,13 @@ class Net(nn.Module):
         # dim [16, 6, 2558]
         x = self.pool(F.relu(self.conv2(x)))
         # dim [16, 16, 638]
-        x = torch.flatten(x, 1) # flatten all dimensions except batch
+        x = torch.flatten(x, 1)  # flatten all dimensions except batch
         # dim [16, 10208]
         x = F.relu(self.fc1(x))
         x = F.relu(self.fc2(x))
         x = self.fc3(x)
         return x
+
 
 class LinearHeadBENDR_from_scratch(nn.Module):
 
@@ -116,7 +120,8 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         self.use_mask_train = not not_use_mask_train
         ##
 
-        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head, dropout=enc_do)
+        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head,
+                                                     dropout=enc_do)
         encoded_samples = self.encoder.downsampling_factor(samples_len)
 
         mask_t_span = mask_t_span if mask_t_span > 1 else int(mask_t_span * encoded_samples)
@@ -125,7 +130,7 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
 
         self.enc_augment = EncodingAugment_from_scratch(encoder_h, mask_p_t, mask_p_c, mask_c_span=mask_c_span,
-                                           mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
+                                                        mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
         tqdm.tqdm.write(self.encoder.description(None, samples_len) + " | {} pooled".format(pool_length))  # sfreq ?
         self.summarizer = nn.AdaptiveAvgPool1d(pool_length)
 
@@ -135,8 +140,8 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         self.extended_classifier = nn.Sequential(Flatten())
         for i in range(1, len(classifier_layers)):
             self.extended_classifier.add_module("ext-classifier-{}".format(i), nn.Sequential(
-                #nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
-                nn.AdaptiveAvgPool1d(classifier_layers[i]), #
+                # nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
+                nn.AdaptiveAvgPool1d(classifier_layers[i]),  #
                 nn.Dropout(feat_do),
                 nn.ReLU(),
                 nn.BatchNorm1d(classifier_layers[i]),
@@ -171,8 +176,8 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         the target should override this method, and there should be a variable called `self.classifier`
         """
         classifier = nn.Linear(self.num_features_for_classification, self.n_targets)
-        #nn.init.xavier_normal_(classifier.weight)
-        #classifier.bias.data.zero_()
+        # nn.init.xavier_normal_(classifier.weight)
+        # classifier.bias.data.zero_()
         # TODO: THIS FLATTEN IS REDUNDANT?
         self.classifier = nn.Sequential(Flatten(), classifier)
 
@@ -215,7 +220,7 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         if layers_to_freeze == 'first':
             for name, param in self.named_parameters():
                 if param.requires_grad:
-                    if ('Encoder_0' in name): # or ('Encoder_1' in name) or ('Encoder_2' in name):
+                    if ('Encoder_0' in name):  # or ('Encoder_1' in name) or ('Encoder_2' in name):
                         param.requires_grad = False
         elif layers_to_freeze == 'threefirst':
             for name, param in self.named_parameters():
@@ -230,8 +235,6 @@ class LinearHeadBENDR_from_scratch(nn.Module):
         else:
             assert 1 == 0
         ### GROUP NORM??? TODO:
-
-
 
     def classifier_forward(self, features):
         return self.classifier(features)
@@ -286,6 +289,7 @@ class ConvEncoderBENDR_from_scratch(nn.Module):
         self._width = enc_width
 
         self.encoder = nn.Sequential()
+
         for i, (width, downsample) in enumerate(zip(enc_width, enc_downsample)):
             self.encoder.add_module("Encoder_{}".format(i), nn.Sequential(
                 nn.Conv1d(in_features, encoder_h, width, stride=downsample, padding=width // 2),
@@ -342,6 +346,7 @@ class ConvEncoderBENDR_from_scratch(nn.Module):
 
     def forward(self, x):
         return self.encoder(x)
+
 
 # FIXME this is redundant with part of the contextualizer
 class EncodingAugment_from_scratch(nn.Module):
@@ -402,6 +407,7 @@ class EncodingAugment_from_scratch(nn.Module):
             param.requires_grad = False
         print("Initialized mask embedding and position encoder from ", filename)
 
+
 # Trying to replicate "Deep Convolutional Neural Network Model for Automated Diagnosis of Schizophrenia Using EEG Signals"
 class DeepNet(nn.Module):
     def __init__(self, use_dropout=False, do1_p=0.5, do2_p=0.5):
@@ -415,7 +421,7 @@ class DeepNet(nn.Module):
         self.conv4 = nn.Conv1d(5, 5, 3, 1)
         self.avgpool2 = nn.AvgPool1d(2, 2)
         self.conv5 = nn.Conv1d(5, 5, 3, 1)
-        self.globavgpool = nn.AdaptiveAvgPool2d((1,5))
+        self.globavgpool = nn.AdaptiveAvgPool2d((1, 5))
         self.fc = nn.Linear(5, 1)
         if use_dropout:
             self.do1 = nn.Dropout2d(do1_p)
@@ -434,6 +440,7 @@ class DeepNet(nn.Module):
         x = self.globavgpool(x)
         x = self.fc(x)
         return x
+
 
 ####################################################################
 
@@ -474,15 +481,17 @@ class BENDRClassification_from_scratch(nn.Module):
             self.make_new_classification_layer(numb_of_targets=self.targets)
         self._init_state = self.state_dict()
 
-        encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, dropout=dropout, projection_head=projection_head)
+        encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, dropout=dropout,
+                                                projection_head=projection_head)
         encoded_samples = encoder.downsampling_factor(samples_len)
 
         mask_t_span = mask_t_span if mask_t_span > 1 else int(mask_t_span * encoded_samples)
         mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
-        contextualizer = BENDRContextualizer_from_scratch(encoder_h, hidden_feedforward=contextualizer_hidden, finetuning=True,
-                                             mask_p_t=mask_p_t, mask_p_c=mask_p_c, layer_drop=layer_drop,
-                                             mask_c_span=mask_c_span, dropout=dropout,
-                                             mask_t_span=mask_t_span)
+        contextualizer = BENDRContextualizer_from_scratch(encoder_h, hidden_feedforward=contextualizer_hidden,
+                                                          finetuning=True,
+                                                          mask_p_t=mask_p_t, mask_p_c=mask_p_c, layer_drop=layer_drop,
+                                                          mask_c_span=mask_c_span, dropout=dropout,
+                                                          mask_t_span=mask_t_span)
 
         self.encoder = nn.DataParallel(encoder) if multi_gpu else encoder
         self.contextualizer = nn.DataParallel(contextualizer) if multi_gpu else contextualizer
@@ -628,7 +637,7 @@ class BENDRClassification_from_scratch(nn.Module):
         if layers_to_freeze == 'first':
             for name, param in self.named_parameters():
                 if param.requires_grad:
-                    if ('Encoder_0' in name): # or ('Encoder_1' in name) or ('Encoder_2' in name):
+                    if ('Encoder_0' in name):  # or ('Encoder_1' in name) or ('Encoder_2' in name):
                         param.requires_grad = False
         elif layers_to_freeze == 'threefirst':
             for name, param in self.named_parameters():
@@ -643,8 +652,6 @@ class BENDRClassification_from_scratch(nn.Module):
         else:
             assert 1 == 0
         ### GROUP NORM??? TODO:
-
-
 
 
 class BENDRContextualizer_from_scratch(nn.Module):
@@ -755,6 +762,7 @@ class BENDRContextualizer_from_scratch(nn.Module):
     def save(self, filename):
         torch.save(self.state_dict(), filename)
 
+
 class Parcial_LinearHeadBENDR_from_scratch(nn.Module):
 
     @property
@@ -785,7 +793,8 @@ class Parcial_LinearHeadBENDR_from_scratch(nn.Module):
         self.use_mask_train = not not_use_mask_train
         ##
 
-        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head, dropout=enc_do)
+        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head,
+                                                     dropout=enc_do)
         encoded_samples = self.encoder.downsampling_factor(samples_len)
 
         mask_t_span = mask_t_span if mask_t_span > 1 else int(mask_t_span * encoded_samples)
@@ -794,7 +803,7 @@ class Parcial_LinearHeadBENDR_from_scratch(nn.Module):
         mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
 
         self.enc_augment = EncodingAugment_from_scratch(encoder_h, mask_p_t, mask_p_c, mask_c_span=mask_c_span,
-                                           mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
+                                                        mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
         tqdm.tqdm.write(self.encoder.description(None, samples_len) + " | {} pooled".format(pool_length))  # sfreq ?
         self.summarizer = nn.AdaptiveAvgPool1d(pool_length)
 
@@ -817,7 +826,6 @@ class Parcial_LinearHeadBENDR_from_scratch(nn.Module):
     def forward(self, *x):
         features = self.features_forward(*x)
         return features
-
 
     def freeze_features(self, unfreeze=False):
         """
@@ -854,7 +862,7 @@ class Parcial_LinearHeadBENDR_from_scratch(nn.Module):
         if layers_to_freeze == 'first':
             for name, param in self.named_parameters():
                 if param.requires_grad:
-                    if ('Encoder_0' in name): # or ('Encoder_1' in name) or ('Encoder_2' in name):
+                    if ('Encoder_0' in name):  # or ('Encoder_1' in name) or ('Encoder_2' in name):
                         param.requires_grad = False
         elif layers_to_freeze == 'threefirst':
             for name, param in self.named_parameters():
@@ -869,8 +877,6 @@ class Parcial_LinearHeadBENDR_from_scratch(nn.Module):
         else:
             assert 1 == 0
         ### GROUP NORM??? TODO:
-
-
 
     def classifier_forward(self, features):
         return self.classifier(features)
@@ -933,7 +939,8 @@ class LongLinearHeadBENDR_from_scratch(nn.Module):
         self.use_mask_train = not not_use_mask_train
         ##
 
-        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head, dropout=enc_do)
+        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head,
+                                                     dropout=enc_do)
         encoded_samples = self.encoder.downsampling_factor(samples_len)
 
         mask_t_span = mask_t_span if mask_t_span > 1 else int(mask_t_span * encoded_samples)
@@ -942,7 +949,7 @@ class LongLinearHeadBENDR_from_scratch(nn.Module):
         mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
 
         self.enc_augment = EncodingAugment_from_scratch(encoder_h, mask_p_t, mask_p_c, mask_c_span=mask_c_span,
-                                           mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
+                                                        mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
         tqdm.tqdm.write(self.encoder.description(None, samples_len) + " | {} pooled".format(pool_length))  # sfreq ?
         self.summarizer = nn.AdaptiveAvgPool1d(pool_length)
 
@@ -952,8 +959,8 @@ class LongLinearHeadBENDR_from_scratch(nn.Module):
         self.extended_classifier = nn.Sequential(Flatten())
         for i in range(1, len(classifier_layers)):
             self.extended_classifier.add_module("ext-classifier-{}".format(i), nn.Sequential(
-                #nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
-                nn.AdaptiveAvgPool1d(classifier_layers[i]), #
+                # nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
+                nn.AdaptiveAvgPool1d(classifier_layers[i]),  #
                 nn.Dropout(feat_do),
                 nn.ReLU(),
                 nn.BatchNorm1d(classifier_layers[i]),
@@ -987,10 +994,10 @@ class LongLinearHeadBENDR_from_scratch(nn.Module):
         Anything besides a layer that just flattens anything incoming to a vector and Linearly weights this to
         the target should override this method, and there should be a variable called `self.classifier`
         """
-        preclassifier0 = nn.Linear(self.num_features_for_classification, self.num_features_for_classification//2)
-        classifier0 = nn.Linear(self.num_features_for_classification//2, self.n_targets)
-        #nn.init.xavier_normal_(classifier.weight)
-        #classifier.bias.data.zero_()
+        preclassifier0 = nn.Linear(self.num_features_for_classification, self.num_features_for_classification // 2)
+        classifier0 = nn.Linear(self.num_features_for_classification // 2, self.n_targets)
+        # nn.init.xavier_normal_(classifier.weight)
+        # classifier.bias.data.zero_()
         # TODO: THIS FLATTEN IS REDUNDANT?
         self.classifier = nn.Sequential(Flatten(), preclassifier0, classifier0)
 
@@ -1033,7 +1040,7 @@ class LongLinearHeadBENDR_from_scratch(nn.Module):
         if layers_to_freeze == 'first':
             for name, param in self.named_parameters():
                 if param.requires_grad:
-                    if ('Encoder_0' in name): # or ('Encoder_1' in name) or ('Encoder_2' in name):
+                    if ('Encoder_0' in name):  # or ('Encoder_1' in name) or ('Encoder_2' in name):
                         param.requires_grad = False
         elif layers_to_freeze == 'threefirst':
             for name, param in self.named_parameters():
@@ -1049,7 +1056,192 @@ class LongLinearHeadBENDR_from_scratch(nn.Module):
             assert 1 == 0
         ### GROUP NORM??? TODO:
 
+    def classifier_forward(self, features):
+        return self.classifier(features)
 
+    # def features_forward(self, x):
+    #    raise NotImplementedError
+
+    def load(self, filename, include_classifier=False, freeze_features=True):
+        state_dict = torch.load(filename)
+        if not include_classifier:
+            for key in [k for k in state_dict.keys() if 'classifier' in k]:
+                state_dict.pop(key)
+        self.load_state_dict(state_dict, strict=False)
+        if freeze_features:
+            self.freeze_features()
+
+    def save(self, filename, ignore_classifier=False):
+        state_dict = self.state_dict()
+        if ignore_classifier:
+            for key in [k for k in state_dict.keys() if 'classifier' in k]:
+                state_dict.pop(key)
+        print("Saving to {} ...".format(filename))
+        torch.save(state_dict, filename)
+
+    def load_encoder(self, encoder_file, freeze=False, strict=True, device=None):
+        self.encoder.load(encoder_file, strict=strict, device=device)
+        self.encoder.freeze_features(not freeze)
+        print("Loaded {}".format(encoder_file))
+
+    def load_pretrained_modules(self, encoder_file='./datasets/encoder.pt',
+                                contextualizer_file='./datasets/contextualizer.pt',
+                                strict=False, freeze_encoder=True, device=None):
+        self.load_encoder(encoder_file, strict=strict, freeze=freeze_encoder, device=device)
+        self.enc_augment.init_from_contextualizer(contextualizer_file, device=device)
+
+
+class LinearHeadBENDR_from_scratch_output(nn.Module):
+
+    @property
+    def num_features_for_classification(self):
+        return self.encoder_h * self.pool_length
+
+    def features_forward(self, x):
+        x = self.encoder(x)
+        x = self.enc_augment(x)
+        x = self.summarizer(x)
+        return self.extended_classifier(x)
+
+    def __init__(self, n_targets, samples_len, n_chn, encoder_h=512, projection_head=False, enc_do=0.1, feat_do=0.4,
+                 pool_length=4, mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
+                 classifier_layers=1, not_use_mask_train=False, th=0.4):
+        if classifier_layers < 1:
+            self.pool_length = pool_length
+            self.encoder_h = 3 * encoder_h
+        else:
+            self.pool_length = pool_length // classifier_layers
+            self.encoder_h = encoder_h
+
+        super().__init__()
+        self.samples_len = samples_len
+        self.n_chn = n_chn
+        self.n_targets = n_targets
+        self.make_new_classification_layer()
+        self._init_state = self.state_dict()
+        self.use_mask_train = not not_use_mask_train
+        self.th = th
+        ##
+
+        self.encoder = ConvEncoderBENDR_from_scratch(n_chn, encoder_h=encoder_h, projection_head=projection_head,
+                                                     dropout=enc_do)
+        encoded_samples = self.encoder.downsampling_factor(samples_len)
+
+        mask_t_span = mask_t_span if mask_t_span > 1 else int(mask_t_span * encoded_samples)
+        # Important for short things like P300
+        mask_t_span = 0 if encoded_samples < 2 else mask_t_span
+        mask_c_span = mask_c_span if mask_c_span > 1 else int(mask_c_span * encoder_h)
+
+        self.enc_augment = EncodingAugment_from_scratch(encoder_h, mask_p_t, mask_p_c, mask_c_span=mask_c_span,
+                                                        mask_t_span=mask_t_span, use_mask_train=self.use_mask_train)
+        tqdm.tqdm.write(self.encoder.description(None, samples_len) + " | {} pooled".format(pool_length))  # sfreq ?
+        self.summarizer = nn.AdaptiveAvgPool1d(pool_length)
+
+        classifier_layers = [self.encoder_h * self.pool_length for i in range(classifier_layers)] if \
+            not isinstance(classifier_layers, (tuple, list)) else classifier_layers
+        classifier_layers.insert(0, 3 * encoder_h * pool_length)
+        self.extended_classifier = nn.Sequential(Flatten())
+        for i in range(1, len(classifier_layers)):
+            self.extended_classifier.add_module("ext-classifier-{}".format(i), nn.Sequential(
+                # nn.Linear(classifier_layers[i - 1], classifier_layers[i]),
+                nn.AdaptiveAvgPool1d(classifier_layers[i]),  #
+                nn.Dropout(feat_do),
+                nn.ReLU(),
+                nn.BatchNorm1d(classifier_layers[i]),
+            ))
+
+    def internal_loss(self, forward_pass_tensors):
+        return None
+
+    def clone(self):
+        """
+        Standard way to copy models, weights and all.
+        """
+        return deepcopy(self)
+
+    def reset(self):
+        self.load_state_dict(self._init_state)
+
+    def forward(self, *x):
+        features = self.features_forward(*x)
+        probs_score = torch.sigmoid(self.classifier_forward(features))
+        int_pred_label = (probs_score >= self.th).long().squeeze()
+        pred_label = [str(x.item()) for x in int_pred_label]
+        out_forward = []
+        for i in range(len(pred_label)):
+            out_forward.append([{'label': 'low_symptoms', 'score': 1 - probs_score[i].item()},
+                                {'label': 'high_symptoms', 'score': probs_score[i].item()}])
+        return out_forward
+
+    def make_new_classification_layer(self):
+        """
+        Make a distinction between the classification layer(s) and the rest of the network. Using a basic
+        formulation of a network being composed of two parts feature_extraction & classifier.
+        This method implement the classification side, so that methods like :py:meth:`freeze_features` works
+        as intended.
+        Anything besides a layer that just flattens anything incoming to a vector and Linearly weights this to
+        the target should override this method, and there should be a variable called `self.classifier`
+        """
+        classifier = nn.Linear(self.num_features_for_classification, self.n_targets)
+        # nn.init.xavier_normal_(classifier.weight)
+        # classifier.bias.data.zero_()
+        # TODO: THIS FLATTEN IS REDUNDANT?
+        self.classifier = nn.Sequential(Flatten(), classifier)
+
+    def freeze_features(self, unfreeze=False, freeze_classifier=False):
+        """
+        Sometimes, the features learned by a model in one domain can be applied to another case.
+
+        This method freezes (or un-freezes) all but the `classifier` layer. So that any further training
+        doesnt (or does if unfreeze=True) affect these weights.
+
+        Parameters
+        ----------
+        unfreeze : bool
+                   To unfreeze weights after a previous call to this.
+        freeze_classifier: bool
+                   Commonly, the classifier layer will not be frozen (default). Setting this to `True` will freeze this
+                   layer too.
+        """
+        for param in self.parameters():
+            param.requires_grad = unfreeze
+
+        if isinstance(self.classifier, nn.Module) and not freeze_classifier:
+            for param in self.classifier.parameters():
+                param.requires_grad = True
+
+    # @property
+    # def num_features_for_classification(self):
+    #    raise NotImplementedError
+
+    def freeze_first_layers(self, layers_to_freeze=None, unfreeze=False):
+        '''
+        Parameters
+        ----------
+        unfreeze : bool
+                   To unfreeze weights after a previous call to this.
+        '''
+        if layers_to_freeze != 'first' and layers_to_freeze != 'threefirst' and layers_to_freeze != 'encoder':
+            assert 1 == 0
+        print('Freeze {} layers!!'.format(layers_to_freeze))
+        if layers_to_freeze == 'first':
+            for name, param in self.named_parameters():
+                if param.requires_grad:
+                    if ('Encoder_0' in name):  # or ('Encoder_1' in name) or ('Encoder_2' in name):
+                        param.requires_grad = False
+        elif layers_to_freeze == 'threefirst':
+            for name, param in self.named_parameters():
+                if param.requires_grad:
+                    if ('Encoder_0' in name) or ('Encoder_1' in name) or ('Encoder_2' in name):
+                        param.requires_grad = False
+        elif layers_to_freeze == 'encoder':
+            for name, param in self.named_parameters():
+                if param.requires_grad:
+                    if ('Encoder' in name):
+                        param.requires_grad = False
+        else:
+            assert 1 == 0
+        ### GROUP NORM??? TODO:
 
     def classifier_forward(self, features):
         return self.classifier(features)

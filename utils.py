@@ -10,9 +10,11 @@ import matplotlib.pyplot as plt
 from matplotlib.collections import LineCollection
 
 from tqdm import tqdm
-from torch.nn.functional import interpolate
+from torch.nn import functional as F
+from F import interpolate
 from channels import map_dataset_channels_deep_1010, DEEP_1010_CH_TYPES, SCALE_IND, \
     EEG_INDS, EOG_INDS, REF_INDS, EXTRA_INDS, DEEP_1010_CHS_LISTING
+import torch
 
 from torch.utils.data import DataLoader
 from torch.utils.data.sampler import BatchSampler
@@ -561,3 +563,59 @@ def plot_cm_valid_per_record(array_epochs_all_records, sorted_record_names, samp
     for t, p in zip(torch.tensor(valid_targets_subseg_conclusion).view(-1), torch.tensor(valid_preds_subseg_conclusion).view(-1)):
         confusion_matrix[t.long(), p.long()] += 1
     return confusion_matrix
+    
+    
+
+
+class SCELoss(torch.nn.Module):
+
+    def __init__(self, _conf):
+        super().__init__()
+        self.alpha, self.beta = _conf['alpha'], _conf['beta']
+        self.labels = _conf['labels']
+    
+    def forward(self, logist, target):
+        """_summary_
+
+        Args:
+            logist (_type_): _description_
+            target (_type_): _description_
+
+        Returns:
+            _type_: _description_
+        """
+        
+        ce = F.cross_entropy(logist, target)
+        
+        pred = torch.clamp(
+            F.softmax(logist, dim=1), min=1e-7, max=1.0
+        )
+        
+        label_one_hot = torch.clamp(
+            F.one_hot(logist, self.labels).float(), 
+            min=1e-4, max=1.0
+        )
+        
+        rce = -torch.sum(pred * torch.log(label_one_hot), dim=1)
+        
+        return self.alpha * ce + self.beta * rce.mean()
+
+    def __str__(self):
+        return 'SCELoss'
+
+
+class ClipLogistCELoss(torch.nn.Module):
+
+    def __init__(self, _conf):
+        super().__init__()
+        self.tau = _conf['tau']
+    
+    def forward(self, logist, target):
+        norm = torch.linalg.norm(logist, dim=1, keepdim=True)
+        clipped = torch.where(
+            norm > self.tau, logist, self.tau * logist / norm
+        )
+        return F.cross_entropy(clipped, target)
+
+    def __str__(self):
+        return 'ClipLogistCELoss'

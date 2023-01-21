@@ -62,7 +62,7 @@ if __name__ == '__main__':
         with open('./{}'.format(data_settings['valid_sets_path']), newline='') as f:
             reader = csv.reader(f)
             valid_sets = list(reader)
-    os.makedirs('./{}-rslts_'.format(args.model) + args.results_filename + '_len{}ov{}_'.format(
+    os.makedirs('./{}-{}-rslts_'.format(args.model, args.task) + args.results_filename + '_len{}ov{}_'.format(
                                     data_settings['tlen'], data_settings['overlap_len']), exist_ok=True)
 
     if args.task == 'regressor':
@@ -153,10 +153,13 @@ if __name__ == '__main__':
             model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512, projection_head=False,
                                                  # DROPOUTS
-                                        enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                        enc_do=0.5, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                         pool_length=4,
                                                  # MASKS LENGHTS
-                                        mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
+                                        mask_p_t= 0.01,
+                                        mask_p_c=0.005,
+                                        mask_t_span=0.05,
+                                        mask_c_span=0.1,
                                         classifier_layers=1, return_features=False,
                                                  # IF USE MASK OR NOT
                                         not_use_mask_train=False)
@@ -164,7 +167,7 @@ if __name__ == '__main__':
             model = LongLinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                                  encoder_h=512, projection_head=False,
                                                  # DROPOUTS
-                                                 enc_do=0.3, feat_do=0.7,  # enc_do=0.1, feat_do=0.4,
+                                                 enc_do=0.5, feat_do=0.7,  # enc_do=0.1, feat_do=0.4,
                                                  pool_length=4,
                                                  # MASKS LENGHTS
                                                  mask_p_t=0.01, mask_p_c=0.005, mask_t_span=0.05, mask_c_span=0.1,
@@ -188,12 +191,23 @@ if __name__ == '__main__':
                                           freeze_encoder=args.freeze_bendr_encoder, device=device)
             if not args.freeze_bendr_encoder:
                 if args.freeze_first_layers:
-                    model.freeze_first_layers(layers_to_freeze='threefirst')
+                    model.freeze_first_layers(layers_to_freeze='first')
         elif args.own_init is not None:
-            model.load_state_dict(torch.load(args.own_init, map_location=device))
-            '''
+            #model.load_state_dict(torch.load(args.own_init, map_location=device))
+
             if not args.model == 'longlinear':
-                model.load_state_dict(torch.load(args.own_init, map_location=device))
+                if args.model == 'BENDR':
+                    states_dicts_path = args.own_init.split('///')
+                    assert len(states_dicts_path) == 2
+                    orig_ws = torch.load(states_dicts_path[0], map_location=device)
+                    new_ws = OrderedDict()
+                    for k, v in orig_ws.items():
+                        if not ('classifier.1' in k):
+                            new_ws[k] = v
+                    model.load_state_dict(new_ws, strict=False)
+                    model.load_state_dict(torch.load(states_dicts_path[1], map_location=device), strict=False)
+                else:
+                    model.load_state_dict(torch.load(args.own_init, map_location=device))
             else:
                 orig_ws = torch.load(args.own_init, map_location=device)
                 new_ws = OrderedDict()
@@ -201,12 +215,16 @@ if __name__ == '__main__':
                     if k[:10] != 'classifier':
                         new_ws[k] = v
                 model.load_state_dict(new_ws, strict=False)
-            '''
+
             for param in model.parameters():
                 param.requires_grad = True
-            model.enc_augment.freeze_enc_aug(freeze=False)
+            if not args.model == 'BENDR':
+                model.enc_augment.freeze_enc_aug(freeze=False)
+            else:
+                model.contextualizer.mask_replacement.requires_grad = True
             if args.freeze_first_layers:
-                model.freeze_first_layers(layers_to_freeze='threefirst')
+                model.freeze_first_layers(layers_to_freeze='first')
+
 
         if args.multi_gpu:
             model = nn.DataParallel(model)
@@ -252,9 +270,10 @@ if __name__ == '__main__':
         with open('./{}-{}-rslts_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_losses, f)
-        with open('./{}-{}-rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
-                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
-            pickle.dump(curves_accs, f)
+        if args.task == 'classifier':
+            with open('./{}-{}-rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+                                                                                            fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
+                pickle.dump(curves_accs, f)
 
         if args.save_models:
             torch.save(best_model.state_dict(), './{}-{}-rslts_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.model, args.task, args.results_filename, data_settings['tlen'],

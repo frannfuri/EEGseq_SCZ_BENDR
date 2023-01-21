@@ -207,11 +207,12 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
                     labels = labels.to(torch.float64)
-                    loss = criterion(outputs.squeeze(1), labels)
                     if type_task == 'classifier':
+                        loss = criterion(outputs.squeeze(1), labels)
                         prepreds = torch.sigmoid(outputs)
                         preds = (prepreds >= 0.4).long().squeeze(1)
                     else:
+                        loss = criterion(outputs.squeeze(1).double(), labels)
                         preds = outputs
 
                     # backward + optimize only if in train phase

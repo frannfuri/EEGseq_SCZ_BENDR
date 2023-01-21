@@ -23,7 +23,7 @@ def SAPSg_from_PANSSp_array(panss_posit_array):
 # Use this when you dont have the labels binarized
 # BINARIZATION METHOD: SAPS FROM PANSS AND AVERAGE WITH REAL MEASURED SAPS
 if __name__ == '__main__':
-    labels_path = '../BENDR_datasets/labels/SA025_labels.csv'
+    labels_path = '../BENDR_datasets/labels/SA047_labels.csv'
     #################################
 
     labels_info = pd.read_csv(labels_path, index_col=0, decimal=',')
