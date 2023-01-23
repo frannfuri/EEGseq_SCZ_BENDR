@@ -88,14 +88,15 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
                 # track history only if train phase
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
-                    labels = labels.to(torch.int64) #.to(torch.float64)
                     if n_outputs == 1:
+                        labels = labels.to(torch.int64).to(torch.float64)
                         loss = criterion(outputs.squeeze(1), labels)
                         prepreds = torch.sigmoid(outputs)
                         preds = (prepreds >= 0.4).long().squeeze(1)
                     else:
+                        labels = labels.to(torch.int64)
                         loss = criterion(outputs,labels)
-                        preds = torch.max(outputs, 1)
+                        _, preds = torch.max(outputs, 1)
 
 
                     # backward + optimize only if in train phase
@@ -210,15 +211,16 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                 # track history only if train phase
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
-                    labels = labels.to(torch.float32) #.to(torch.float64)
                     if type_task == 'classifier':
                         if n_outputs == 1:
+                            labels = labels.to(torch.float32).to(torch.float64)
                             loss = criterion(outputs.squeeze(1), labels)
                             prepreds = torch.sigmoid(outputs)
                             preds = (prepreds >= 0.4).long().squeeze(1)
                         else:
+                            labels = labels.to(torch.float32)  # .to(torch.float64)
                             loss = criterion(outputs, labels)
-                            preds = torch.max(outputs, 1)
+                            _, preds = torch.max(outputs, 1)
                     else:
                         loss = criterion(outputs.squeeze(1).double(), labels)
                         preds = outputs

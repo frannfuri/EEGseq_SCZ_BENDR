@@ -245,7 +245,7 @@ if __name__ == '__main__':
             else:
                 loss_dict = dict()
                 loss_dict['tau'] = 0.6666
-                criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss()
+                criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
 
         # Train
         if args.task == 'classifier':
