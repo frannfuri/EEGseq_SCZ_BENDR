@@ -11,7 +11,7 @@ from matplotlib.collections import LineCollection
 
 from tqdm import tqdm
 from torch.nn import functional as F
-from F import interpolate
+from torch.nn.functional import interpolate
 from channels import map_dataset_channels_deep_1010, DEEP_1010_CH_TYPES, SCALE_IND, \
     EEG_INDS, EOG_INDS, REF_INDS, EXTRA_INDS, DEEP_1010_CHS_LISTING
 import torch

@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from torch import nn
-from utils import comp_confusion_matrix, MODEL_CHOICES, TASK_CHOICES
+from utils import comp_confusion_matrix, MODEL_CHOICES, TASK_CHOICES, ClipLogistCELoss
 from mlxtend.plotting import plot_confusion_matrix
 
 if __name__ == '__main__':
@@ -50,6 +50,7 @@ if __name__ == '__main__':
     parser.add_argument('--own-init', default=None,
                         help="Load my own pretrained weigths, for the complete model.")
 
+    parser.add_argument('--n-outputs', default=1, help='Output dimension of the network, it also defines if you have tu use softmax or sigmoid', type=int)
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -150,10 +151,10 @@ if __name__ == '__main__':
 
         # Model
         if args.model == 'linear':
-            model = LinearHeadBENDR_from_scratch(1, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
+            model = LinearHeadBENDR_from_scratch(args.n_outputs, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512, projection_head=False,
                                                  # DROPOUTS
-                                        enc_do=0.5, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                        enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                         pool_length=4,
                                                  # MASKS LENGHTS
                                         mask_p_t= 0.01,
@@ -242,22 +243,24 @@ if __name__ == '__main__':
             if args.ponderate_loss:
                 criterion = nn.BCEWithLogitsLoss(weigth=class_weigth)
             else:
-                criterion = nn.BCEWithLogitsLoss()
+                loss_dict = dict()
+                loss_dict['tau'] = 0.6666
+                criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss()
 
         # Train
         if args.task == 'classifier':
             if args.use_valid:
                 best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
                                                 model, criterion, optimizer, dataloaders, device, num_epochs,
-                                                valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False)
+                                                valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False, n_outputs=args.n_outputs)
             else:
                 best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
-                                                model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False)
+                                                model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False, n_outputs = args.n_outputs)
         else:
             if args.use_valid:
                 best_model, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
                                                 model, criterion, optimizer, dataloaders, device, num_epochs,
-                                                valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False)
+                                                valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False, n_outputs=args.n_outputs)
             else:
                 best_model, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
                                                 model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False)
