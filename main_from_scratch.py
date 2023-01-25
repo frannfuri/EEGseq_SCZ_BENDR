@@ -6,7 +6,7 @@ import os
 import csv
 from datasets import charge_dataset, standardDataset, recInfoDataset
 from architectures import Net, LongLinearHeadBENDR_from_scratch, LinearHeadBENDR_from_scratch, BENDRClassification_from_scratch
-from trainables import train_scratch_model, train_scratch_model_no_valid
+from trainables import train_scratch_model, train_scratch_model_no_valid, train_sratch_model_per_epoch
 import numpy as np
 import seaborn as sn
 import pandas as pd
@@ -49,6 +49,7 @@ if __name__ == '__main__':
                         help='Sampling frequency to transform the EEG to input to the network.', type=int)
     parser.add_argument('--own-init', default=None,
                         help="Load my own pretrained weigths, for the complete model.")
+    parser.add_argument('--loss-per-epoch', action='store_true')
 
     parser.add_argument('--n-outputs', default=1, help='Output dimension of the network, it also defines if you have tu use softmax or sigmoid', type=int)
     args = parser.parse_args()
@@ -122,8 +123,11 @@ if __name__ == '__main__':
             train_dataset = recInfoDataset(all_X[train_ids], all_y[train_ids], [sorted_record_names[i] for i in train_ids])
             valid_dataset = recInfoDataset(all_X[valid_ids], all_y[valid_ids], [sorted_record_names[i] for i in valid_ids])
 
-
-            trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True, drop_last=True)
+            if args.valid_per_record and args.loss_per_epoch:
+                trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=False, drop_last=True)
+                print('Train set were not shuffled!')
+            else:
+                trainloader = torch.utils.data.DataLoader(train_dataset, batch_size=bs, shuffle=True, drop_last=True)
             if args.valid_per_record:
                 validloader = torch.utils.data.DataLoader(valid_dataset, batch_size=1, shuffle=False)
                 print('Validation set were not shuffled!')
@@ -255,9 +259,15 @@ if __name__ == '__main__':
         # Train
         if args.task == 'classifier':
             if args.use_valid:
-                best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
-                                                model, criterion, optimizer, dataloaders, device, num_epochs,
-                                                valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False, n_outputs=args.n_outputs)
+                if args.loss_per_epoch:
+                    best_model, curves_accs, curves_losses, best_epoch = train_scratch_model_per_epoch(
+                        model, criterion, optimizer, dataloaders, device, num_epochs,
+                        valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug,
+                        use_clip_grad=False)
+                else:
+                    best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
+                                                    model, criterion, optimizer, dataloaders, device, num_epochs,
+                                                    valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False, n_outputs=args.n_outputs)
             else:
                 best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
                                                 model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False, n_outputs = args.n_outputs)
@@ -271,10 +281,11 @@ if __name__ == '__main__':
                                                 model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False)
 
         best_epoch_fold.append(best_epoch)
-        train_df.to_csv("./{}-{}-rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
-                                                                                       fold, args.dataset_directory.split('/')[-1], lr, bs))
-        valid_df.to_csv("./{}-{}-rslts_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
-                                                                                       fold, args.dataset_directory.split('/')[-1], lr, bs))
+        if not args.loss_per_epoch:
+            train_df.to_csv("./{}-{}-rslts_{}_len{}ov{}_/train_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+                                                                                           fold, args.dataset_directory.split('/')[-1], lr, bs))
+            valid_df.to_csv("./{}-{}-rslts_{}_len{}ov{}_/valid_Df_f{}_{}_lr{}bs{}.csv".format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
+                                                                                           fold, args.dataset_directory.split('/')[-1], lr, bs))
         with open('./{}-{}-rslts_{}_len{}ov{}_/mean_loss_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                        fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
             pickle.dump(curves_losses, f)

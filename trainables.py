@@ -358,3 +358,170 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
     else:
         return model, (train_losses, valid_losses), pd.DataFrame(train_log), pd.DataFrame(
             valid_log), best_epoch
+
+
+##################################################################
+
+def train_scratch_model_per_epoch(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len,
+                        valid_per_record, extra_aug, use_clip_grad, n_divisions_segments=4):
+    since = time.time()
+
+    best_model_wts = copy.deepcopy(model.state_dict())
+    best_epoch = 0
+    best_acc = 0.0
+    best_loss = 999.999
+
+    train_accs = []
+    valid_accs = []
+    train_losses = []
+    valid_losses = []
+    for epoch in range(num_epochs):
+        print('-' * 10)
+        print('Epoch {}/{}'.format(epoch, num_epochs - 1))
+        print('-' * 10)
+
+        # Each epoch has a training and validation phase
+        all_phases = ['train', 'valid']
+
+        for phase in all_phases:
+            if phase == 'train':
+                model.train()  # Set model to training mode
+            else:
+                model.eval()  # Set model to evaluate mode
+
+            running_loss = 0.0
+            running_corrects = 0
+            it = 0
+
+            num_samples = 0
+
+            logits_ = []
+            preds_ = []
+            targets_ = []
+            names_ = []
+            valid_name_analyze = '0'
+            # Batch iterations
+            for inputs, labels, rec_info in dataloaders[phase]:
+                it += 1
+                inputs = inputs.to(device)
+                labels = labels.to(device)
+
+                # Extra augmentation?
+                if extra_aug:
+                    for batch_sample in range(inputs.shape[0]):
+                        if decision(0.2):
+                            inputs[batch_sample, :, :] = round(random.uniform(0.8, 1.2), 2) * inputs[batch_sample, :, :]
+                        elif decision(0.2):
+                            inputs[batch_sample, :, :] = -1 * inputs[batch_sample, :, :]
+
+
+                # Forward
+                # track history only if train phase
+                with torch.set_grad_enabled(phase == 'train'):
+                    outputs = model(inputs)
+                    labels = labels.to(torch.float64)
+                    targets_.append(labels)
+                    ##loss = criterion(outputs.squeeze(1), labels)
+                    logits_.append(outputs)
+                    prepreds = torch.sigmoid(outputs)
+                    preds = (prepreds >= 0.4).long().squeeze(1)
+                    preds_.append(preds.numpy())
+                    names_.append(rec_info)
+
+                    num_samples += 1 * inputs.size(0)
+
+                    # backward + optimize only if in train phase
+                    if len(dataloaders[phase]) > 100:
+                        if it % 50 == 0:
+                            print('iteration nb. {}'.format(it))
+                    else:
+                        if it % 5 == 0:
+                            print('iteration nb. {}'.format(it))
+
+            zero_logits_ = []
+            zero_targets_ = []
+            zero_preds_ = []
+            zero_names_ = []
+            one_logits_ = []
+            one_targets_ = []
+            one_preds_ = []
+            one_names_ = []
+            for batch_i in range(len(targets_)):
+                for elem in range(len(targets_[batch_i])):
+                    if targets_[batch_i][elem] == 0:
+                        zero_logits_.append(logits_[batch_i][elem])
+                        zero_preds_.append(preds_[batch_i][elem])
+                        zero_targets_.append(targets_[batch_i][elem].unsqueeze(0))
+                        zero_names_.append(names_[batch_i][elem])
+                    elif targets_[batch_i][elem] == 1:
+                        one_logits_.append(logits_[batch_i][elem])
+                        one_preds_.append(preds_[batch_i][elem])
+                        one_names_.append(names_[batch_i][elem])
+                        one_targets_.append(targets_[batch_i][elem].unsqueeze(0))
+                    else:
+                        assert 1 == 0
+
+            # Zero the parameter gradients
+            optimizer.zero_grad()
+            loss0 = criterion(torch.cat(zero_logits_), torch.cat(zero_targets_))
+            assert torch.tensor(one_targets_).mean().item() == 1.
+            loss1 = criterion(torch.cat(one_logits_).mean(), torch.cat(one_targets_).mean())
+            loss = loss0 + loss1
+
+            if phase == 'train':
+                loss.backward()
+                if use_clip_grad:
+                    torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
+                optimizer.step()
+
+
+            # Accuracy computation
+            if valid_per_record:
+                tot_ = 0
+                corr_ = 0
+                names_ = zero_names_ + one_names_
+                each_rec_name = list(set(names_))
+                preds_ = zero_preds_ + one_preds_
+                targets_ = np.concatenate((torch.tensor(zero_targets_).detach().numpy(), torch.tensor(one_targets_).detach().numpy()))
+                for this_rec_name in each_rec_name:
+                    this_indexes = [i for i in range(len(names_)) if names_[i] == this_rec_name]
+                    this_preds = np.array(preds_)[this_indexes]
+                    assert all_same(targets_[this_indexes])
+                    this_target = targets_[this_indexes].mean()
+                    len_subsegment_ = len(this_indexes)//3
+                    index_count_ = 0
+                    for j in range(3):
+                        subsegment_preds_ = this_preds[index_count_:(index_count_+len_subsegment_)]
+                        subsegments_corrs_ = 0
+                        for pred_ii in subsegment_preds_:
+                            if pred_ii == this_target:
+                                subsegments_corrs_ += 1
+                        if subsegments_corrs_/len_subsegment_ >= 0.5:
+                            corr_ += 1
+                        tot_ += 1
+                        index_count_ += len_subsegment_
+
+            accc = corr_/tot_
+            if phase == 'train':
+                train_losses.append(loss.item())
+                train_accs.append(accc)
+            else:
+                valid_losses.append(loss.item())
+                valid_accs.append(accc)
+
+
+            print('[{}];   Acc.: {:.4};   Loss: {:.4f}.'.format(phase, accc, loss))
+            if phase == 'valid' and accc > best_acc:
+                best_acc = accc
+                best_model_wts = copy.deepcopy(model.state_dict())
+                best_epoch = epoch
+        print()
+
+    time_elapsed = time.time() - since
+    print('Training complete in {:.0f}m {:.0f}s'.format(
+        time_elapsed // 60, time_elapsed % 60))
+    print('Best val Acc: {:4f}'.format(best_acc))
+
+    # Load best model weights
+    model.load_state_dict(best_model_wts)
+    return model, (train_accs, valid_accs), (train_losses, valid_losses), best_epoch
