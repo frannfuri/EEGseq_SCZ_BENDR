@@ -13,7 +13,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 from collections import OrderedDict
 from torch import nn
-from utils import comp_confusion_matrix, MODEL_CHOICES, TASK_CHOICES, ClipLogistCELoss
+from utils import comp_confusion_matrix, MODEL_CHOICES, TASK_CHOICES, ClipLogistCELoss, SCELoss
 from mlxtend.plotting import plot_confusion_matrix
 
 if __name__ == '__main__':
@@ -154,7 +154,7 @@ if __name__ == '__main__':
             model = LinearHeadBENDR_from_scratch(args.n_outputs, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512, projection_head=False,
                                                  # DROPOUTS
-                                        enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                        enc_do=0.5, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                         pool_length=4,
                                                  # MASKS LENGHTS
                                         mask_p_t= 0.01,
@@ -244,8 +244,13 @@ if __name__ == '__main__':
                 criterion = nn.BCEWithLogitsLoss(weigth=class_weigth)
             else:
                 loss_dict = dict()
-                loss_dict['tau'] = 0.6666
-                criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
+                #loss_dict['alpha'] = 10
+                #loss_dict['beta'] = 0.5
+                #loss_dict['labels'] = 2
+                loss_dict['tau'] = 0.5
+                #criterion = SCELoss(loss_dict)
+                criterion = ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() 
+                #criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
 
         # Train
         if args.task == 'classifier':

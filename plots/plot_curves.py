@@ -5,12 +5,15 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = '../linear-rslts_avp_pAug_pretOwn_vpr_dp0307_f3f_th04_0_len40ov30_'
-    name= 'decomp_study_SA047_lr5e-05bs8'
-    n_folds = 4
-    task_type = 'regressor'
+    path = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0507_f1f_th04_clipL05_len40ov30_'
+    #path = '../linear-classifier-rslts_avp_pAug_bw_dp0307_f1f_th04_clipL_len40ov30_'
+    name= 'decomp_study_SA039_lr5e-05bs8'
+    #name = 'h_scz_study_lr0.0001bs8'  #5e-05bs8'
+    n_folds = 5
+    task_type = 'classifier'
     use_lims = True
     use_val = True
+    #use_val = False
     per_record_val = True
     if use_lims:
         loss_lims = (0, 1.5)
@@ -120,6 +123,6 @@ if __name__ == '__main__':
             plt.ylim(acc_lims)
         plt.ylabel('accuracy')
 
-    plt.show(block=False)
+    plt.show()
     a = 0
 

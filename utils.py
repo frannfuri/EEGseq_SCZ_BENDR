@@ -592,7 +592,7 @@ class SCELoss(torch.nn.Module):
         )
         
         label_one_hot = torch.clamp(
-            F.one_hot(logist, self.labels).float(), 
+            F.one_hot(target, self.labels).float(), 
             min=1e-4, max=1.0
         )
         

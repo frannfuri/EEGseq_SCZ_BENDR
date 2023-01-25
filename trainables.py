@@ -89,7 +89,7 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
                 with torch.set_grad_enabled(phase == 'train'):
                     outputs = model(inputs)
                     if n_outputs == 1:
-                        labels = labels.to(torch.int64).to(torch.float64)
+                        labels = labels.to(torch.float64)
                         loss = criterion(outputs.squeeze(1), labels)
                         prepreds = torch.sigmoid(outputs)
                         preds = (prepreds >= 0.4).long().squeeze(1)
@@ -213,12 +213,12 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                     outputs = model(inputs)
                     if type_task == 'classifier':
                         if n_outputs == 1:
-                            labels = labels.to(torch.float32).to(torch.float64)
+                            labels = labels.to(torch.float64)
                             loss = criterion(outputs.squeeze(1), labels)
                             prepreds = torch.sigmoid(outputs)
                             preds = (prepreds >= 0.4).long().squeeze(1)
                         else:
-                            labels = labels.to(torch.float32)  # .to(torch.float64)
+                            labels = labels.to(torch.int64)
                             loss = criterion(outputs, labels)
                             _, preds = torch.max(outputs, 1)
                     else:
