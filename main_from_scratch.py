@@ -6,7 +6,7 @@ import os
 import csv
 from datasets import charge_dataset, standardDataset, recInfoDataset
 from architectures import Net, LongLinearHeadBENDR_from_scratch, LinearHeadBENDR_from_scratch, BENDRClassification_from_scratch
-from trainables import train_scratch_model, train_scratch_model_no_valid, train_sratch_model_per_epoch
+from trainables import train_scratch_model, train_scratch_model_no_valid, train_scratch_model_per_epoch
 import numpy as np
 import seaborn as sn
 import pandas as pd
@@ -247,23 +247,28 @@ if __name__ == '__main__':
             if args.ponderate_loss:
                 criterion = nn.BCEWithLogitsLoss(weigth=class_weigth)
             else:
-                loss_dict = dict()
-                #loss_dict['alpha'] = 10
-                #loss_dict['beta'] = 0.5
-                #loss_dict['labels'] = 2
-                loss_dict['tau'] = 0.5
-                #criterion = SCELoss(loss_dict)
-                criterion = ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() 
-                #criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
+                if args.n_outputs > 1:
+                    #loss_dict = dict()
+                    #loss_dict['alpha'] = 10
+                    #loss_dict['beta'] = 0.5
+                    #loss_dict['labels'] = 2
+                    #loss_dict['tau'] = 0.5
+                    #criterion = SCELoss(loss_dict)
+                    #criterion = ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() 
+                    # criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
+                    criterion0 = nn.CrossEntropyLoss()
+                    criterion1 = nn.CrossEntropyLoss(label_smoothing=0.7)
+                else:
+                    criterion = nn.BCEWithLogitsLoss()
 
         # Train
         if args.task == 'classifier':
             if args.use_valid:
                 if args.loss_per_epoch:
                     best_model, curves_accs, curves_losses, best_epoch = train_scratch_model_per_epoch(
-                        model, criterion, optimizer, dataloaders, device, num_epochs,
+                        model, criterion0, criterion1, optimizer, dataloaders, device, num_epochs,
                         valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug,
-                        use_clip_grad=False)
+                        use_clip_grad=False, n_outputs=args.n_outputs)
                 else:
                     best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
                                                     model, criterion, optimizer, dataloaders, device, num_epochs,
