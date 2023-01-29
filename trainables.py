@@ -152,7 +152,8 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
         valid_log), best_epoch
 
 def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len,
-                        valid_per_record, extra_aug,  type_task, use_clip_grad, n_divisions_segments=4, n_outputs=1):
+                        valid_per_record, extra_aug,  type_task, use_clip_grad, n_divisions_segments=4, n_outputs=1, split_criterion=False,
+                        criterion0=None, criterion1=None):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -219,10 +220,21 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                             preds = (prepreds >= 0.4).long().squeeze(1)
                         else:
                             labels = labels.to(torch.int64)
-                            loss = criterion(outputs, labels)
+                            if split_criterion:
+                                zero_ids = [i for i in range(len(labels)) if labels[i] == 0]
+                                one_ids = [i for i in range(len(labels)) if labels[i] == 1]
+                                loss0 = criterion0(outputs[zero_ids], labels[zero_ids])
+                                loss1 = criterion1(outputs[one_ids], labels[one_ids])
+                                assert criterion is None
+                                loss = loss0 + loss1
+                            else:
+                                loss = criterion(outputs, labels)
+                                assert (criterion0 is None) and (criterion1 is None)
                             _, preds = torch.max(outputs, 1)
                     else:
                         loss = criterion(outputs.squeeze(1).double(), labels)
+                        if split_criterion:
+                            assert 1 == 0
                         preds = outputs
 
                     # backward + optimize only if in train phase
@@ -371,6 +383,8 @@ def train_scratch_model_per_epoch(model, criterion0, criterion1, optimizer, data
     best_acc = 0.0
     best_loss = 999.999
 
+    train_accs_per_sample = []
+    valid_accs_per_sample = []
     train_accs = []
     valid_accs = []
     train_losses = []
@@ -486,7 +500,6 @@ def train_scratch_model_per_epoch(model, criterion0, criterion1, optimizer, data
                     torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=2.0)
                 optimizer.step()
 
-
             # Accuracy computation
             if valid_per_record:
                 tot_ = 0
@@ -514,12 +527,15 @@ def train_scratch_model_per_epoch(model, criterion0, criterion1, optimizer, data
                         index_count_ += len_subsegment_
 
             accc = corr_/tot_
+            acc_per_sample = (np.sum(preds_ == targets_) / len(preds_))
             if phase == 'train':
                 train_losses.append(loss.item())
                 train_accs.append(accc)
+                train_accs_per_sample.append(acc_per_sample)
             else:
                 valid_losses.append(loss.item())
                 valid_accs.append(accc)
+                valid_accs_per_sample.append(acc_per_sample)
 
 
             print('[{}];   Acc.: {:.4};   Loss: {:.4f}.'.format(phase, accc, loss))
@@ -536,4 +552,4 @@ def train_scratch_model_per_epoch(model, criterion0, criterion1, optimizer, data
 
     # Load best model weights
     model.load_state_dict(best_model_wts)
-    return model, (train_accs, valid_accs), (train_losses, valid_losses), best_epoch
+    return model, (train_accs, valid_accs), (train_losses, valid_losses), best_epoch, (train_accs_per_sample, valid_accs_per_sample)

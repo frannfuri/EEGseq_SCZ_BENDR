@@ -52,6 +52,7 @@ if __name__ == '__main__':
     parser.add_argument('--loss-per-epoch', action='store_true')
 
     parser.add_argument('--n-outputs', default=1, help='Output dimension of the network, it also defines if you have tu use softmax or sigmoid', type=int)
+    parser.add_argument('--split-criterion', action='store_true')
     args = parser.parse_args()
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -254,10 +255,11 @@ if __name__ == '__main__':
                     #loss_dict['labels'] = 2
                     #loss_dict['tau'] = 0.5
                     #criterion = SCELoss(loss_dict)
-                    #criterion = ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() 
-                    # criterion = nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
+                    #criterion = ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss()
+                    criterion = None #nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
                     criterion0 = nn.CrossEntropyLoss()
-                    criterion1 = nn.CrossEntropyLoss(label_smoothing=0.7)
+                    criterion1 = nn.CrossEntropyLoss() # label_smoothing=0.7)
+                    assert (criterion is None and ((criterion0 is not None) and (criterion1 is not None))) or (criterion is not None and ((criterion0 is None) and (criterion1 is None)))
                 else:
                     criterion = nn.BCEWithLogitsLoss()
 
@@ -265,14 +267,15 @@ if __name__ == '__main__':
         if args.task == 'classifier':
             if args.use_valid:
                 if args.loss_per_epoch:
-                    best_model, curves_accs, curves_losses, best_epoch = train_scratch_model_per_epoch(
+                    best_model, curves_accs, curves_losses, best_epoch, curves_accs_per_sample = train_scratch_model_per_epoch(
                         model, criterion0, criterion1, optimizer, dataloaders, device, num_epochs,
                         valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug,
                         use_clip_grad=False, n_outputs=args.n_outputs)
                 else:
                     best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
                                                     model, criterion, optimizer, dataloaders, device, num_epochs,
-                                                    valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False, n_outputs=args.n_outputs)
+                                                    valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False, n_outputs=args.n_outputs,
+                    criterion0=criterion0, criterion1=criterion1, split_criterion=args.split_criterion)
             else:
                 best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
                                                 model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False, n_outputs = args.n_outputs)
@@ -298,6 +301,18 @@ if __name__ == '__main__':
             with open('./{}-{}-rslts_{}_len{}ov{}_/mean_acc_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task, args.results_filename, data_settings['tlen'], data_settings['overlap_len'],
                                                                                             fold, args.dataset_directory.split('/')[-1], lr, bs), 'wb') as f:
                 pickle.dump(curves_accs, f)
+            if args.loss_per_epoch:
+                with open(
+                        './{}-{}-rslts_{}_len{}ov{}_/mean_acc_per_sample_curves_f{}_{}_lr{}bs{}.pkl'.format(args.model, args.task,
+                                                                                                 args.results_filename,
+                                                                                                 data_settings['tlen'],
+                                                                                                 data_settings[
+                                                                                                     'overlap_len'],
+                                                                                                 fold,
+                                                                                                 args.dataset_directory.split(
+                                                                                                     '/')[-1], lr, bs),
+                        'wb') as f:
+                    pickle.dump(curves_accs_per_sample, f)
 
         if args.save_models:
             torch.save(best_model.state_dict(), './{}-{}-rslts_{}_len{}ov{}_/best_model_f{}_{}_lr{}bs{}.pt'.format(args.model, args.task, args.results_filename, data_settings['tlen'],

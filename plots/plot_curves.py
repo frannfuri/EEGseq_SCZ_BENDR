@@ -5,7 +5,7 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0507_f1f_th04_newL_o2_len40ov30_'
+    path = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0507_f1f_th04_sepCE_o2_4segm_len40ov30_'
     #path = '../linear-classifier-rslts_avp_pAug_bw_dp0307_f1f_th04_ce_o2_len40ov30_'
     name= 'decomp_study_SA047_lr5e-05bs8'
     #name = 'h_scz_study_lr0.0001bs8'  #5e-05bs8'
