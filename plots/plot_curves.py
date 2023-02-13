@@ -5,12 +5,13 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0507_f1f_th04_sepCE_o2_4segm_len40ov30_'
+    path = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_th04_bcePw075_stepLR01_seed10_len40ov30_'
     #path = '../linear-classifier-rslts_avp_pAug_bw_dp0307_f1f_th04_ce_o2_len40ov30_'
-    name= 'decomp_study_SA047_lr5e-05bs8'
+    name= 'decomp_study_SA007_lr0.0001bs8'
     #name = 'h_scz_study_lr0.0001bs8'  #5e-05bs8'
     n_folds = 4
-    task_type = 'classifier'
+    eps_to_plot = 29
+    task_type = 'classifier'  #'regressor'
     use_lims = True
     use_val = True
     #use_val = False
@@ -66,9 +67,9 @@ if __name__ == '__main__':
 
     plt.figure()
     for i in range(n_folds):
-        plt.plot(train_loss_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
+        plt.plot(train_loss_curves_per_fold[i][:eps_to_plot], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
-            plt.plot(valid_loss_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
+            plt.plot(valid_loss_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1))
     plt.title('Training loss, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
     plt.legend(loc='best', ncol=2, fontsize=8)
     plt.xlabel('epoch')
@@ -79,13 +80,13 @@ if __name__ == '__main__':
     plt.figure()
     means = np.mean(np.array(train_loss_curves_per_fold), 0)
     stds = np.std(np.array(train_loss_curves_per_fold), 0)
-    plt.fill_between(list(range(n_epochs)), means - stds, means + stds, alpha=0.1, color="r")
-    plt.plot(list(range(n_epochs)), means, "o-", color="r", label="Train loss")
+    plt.fill_between(list(range(eps_to_plot)), means[:eps_to_plot] - stds[:eps_to_plot], means[:eps_to_plot] + stds[:eps_to_plot], alpha=0.1, color="r")
+    plt.plot(list(range(eps_to_plot)), means[:eps_to_plot], "o-", color="r", label="Train loss")
     if use_val:
         means = np.mean(np.array(valid_loss_curves_per_fold),0)
         stds = np.std(np.array(valid_loss_curves_per_fold),0)
-        plt.fill_between(list(range(n_epochs)), means - stds, means + stds, alpha=0.1, color="b")
-        plt.plot(list(range(n_epochs)), means, "o-", color="b", label="Valid loss")
+        plt.fill_between(list(range(eps_to_plot)), means[:eps_to_plot] - stds[:eps_to_plot], means[:eps_to_plot] + stds[:eps_to_plot], alpha=0.1, color="b")
+        plt.plot(list(range(eps_to_plot)), means[:eps_to_plot], "o-", color="b", label="Valid loss")
     plt.title('Mean training loss, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
     plt.legend(loc='best', fontsize=8)
     plt.xlabel('epoch')
@@ -96,9 +97,9 @@ if __name__ == '__main__':
     if task_type == 'classifier':
         plt.figure()
         for i in range(n_folds):
-            plt.plot(train_acc_curves_per_fold[i], label='Train CV it. {}'.format(i+1), linestyle='dashed')
+            plt.plot(train_acc_curves_per_fold[i][:eps_to_plot], label='Train CV it. {}'.format(i+1), linestyle='dashed')
             if use_val:
-                plt.plot(valid_acc_curves_per_fold[i], label='Valid CV it. {}'.format(i+1))
+                plt.plot(valid_acc_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1))
         plt.title('Training accuracy, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
         plt.legend(loc='best', ncol=2, fontsize=8)
         plt.xlabel('epoch')
@@ -109,13 +110,13 @@ if __name__ == '__main__':
         plt.figure()
         means = np.mean(train_acc_curves_per_fold, 0)
         stds = np.std(train_acc_curves_per_fold, 0)
-        plt.fill_between(list(range(n_epochs)), means - stds, means + stds, alpha=0.1, color="r")
-        plt.plot(list(range(n_epochs)), means, "o-", color="r", label="Train acc")
+        plt.fill_between(list(range(eps_to_plot)), means[:eps_to_plot] - stds[:eps_to_plot], means[:eps_to_plot] + stds[:eps_to_plot], alpha=0.1, color="r")
+        plt.plot(list(range(eps_to_plot)), means[:eps_to_plot], "o-", color="r", label="Train acc")
         if use_val:
             means = np.mean(valid_acc_curves_per_fold, 0)
             stds = np.std(valid_acc_curves_per_fold, 0)
-            plt.fill_between(list(range(n_epochs)), means - stds, means + stds, alpha=0.1, color="b")
-            plt.plot(list(range(n_epochs)), means, "o-", color="b", label="Valid acc")
+            plt.fill_between(list(range(eps_to_plot)), means[:eps_to_plot] - stds[:eps_to_plot], means[:eps_to_plot] + stds[:eps_to_plot], alpha=0.1, color="b")
+            plt.plot(list(range(eps_to_plot)), means[:eps_to_plot], "o-", color="b", label="Valid acc")
         plt.title('Mean training accuracy, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
         plt.legend(loc='best', fontsize=8)
         plt.xlabel('epoch')

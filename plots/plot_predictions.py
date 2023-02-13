@@ -15,6 +15,7 @@ if __name__ == '__main__':
     n_folds = 5
     model_path1 = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0507_f1f_th04_len40ov30_/best_model_f'
     model_path2 = '_decomp_study_SA010_lr5e-05bs8.pt'
+    regression_task = True
     th = 0.4
 
     #################################
@@ -87,9 +88,12 @@ if __name__ == '__main__':
             for x, y, rec_name in validloader:
                 if rec_name[0] == rec_i:
                     output = model(x)
-                    prepred = torch.sigmoid(output)
-                    rec_predict_probabs.append(prepred)
-                    pred = (prepred >= th).long().squeeze()
+                    if regression_task:
+                        pred = output
+                    else:
+                        prepred = torch.sigmoid(output)
+                        rec_predict_probabs.append(prepred)
+                        pred = (prepred >= th).long().squeeze()
                     rec_predictions.append(pred.item())
                     rec_targets.append(y.item())
             all_recs_predict_probabs.append(rec_predict_probabs)
@@ -105,8 +109,9 @@ if __name__ == '__main__':
             axs[i].set_yticks([0, 0.5, 1], minor=False)
             axs[i].yaxis.grid(True, linestyle='--', which='major', linewidth=1)
             axs[i].yaxis.grid(True, linestyle='--', which='minor')
-            axs[i].plot(list(range(len(all_recs_predict_probabs[i]))), all_recs_predict_probabs[i],
-                        label='probab.', linestyle='dashed', c='dimgrey')
+            if not regression_task:
+                axs[i].plot(list(range(len(all_recs_predict_probabs[i]))), all_recs_predict_probabs[i],
+                            label='probab.', linestyle='dashed', c='dimgrey')
             axs[i].scatter(list(range(len(all_recs_predictions[i]))), all_recs_predictions[i],
                            label='{}\n(target={})'.format(valid_record_names[i], int(all_recs_targets[i][0])),
                            c=marker_color, s=20)

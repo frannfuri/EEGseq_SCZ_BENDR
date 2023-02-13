@@ -15,6 +15,7 @@ from collections import OrderedDict
 from torch import nn
 from utils import comp_confusion_matrix, MODEL_CHOICES, TASK_CHOICES, ClipLogistCELoss, SCELoss
 from mlxtend.plotting import plot_confusion_matrix
+from torch.optim import lr_scheduler
 
 if __name__ == '__main__':
     # Arguments and preliminaries
@@ -159,7 +160,7 @@ if __name__ == '__main__':
             model = LinearHeadBENDR_from_scratch(args.n_outputs, samples_len=samples_tlen * args.input_sfreq, n_chn=20,
                                         encoder_h=512, projection_head=False,
                                                  # DROPOUTS
-                                        enc_do=0.5, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
+                                        enc_do=0.3, feat_do=0.7, #enc_do=0.1, feat_do=0.4,
                                         pool_length=4,
                                                  # MASKS LENGHTS
                                         mask_p_t= 0.01,
@@ -239,29 +240,35 @@ if __name__ == '__main__':
         # Optimizer and Loss
         if args.freeze_first_layers:
             optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0.01)
+            exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
         else:
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
+            exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
 
         if args.task == 'regressor':
-            criterion = nn.MSELoss()
+            criterion = nn.L1Loss()  #MSELoss()
         else:
             if args.ponderate_loss:
                 criterion = nn.BCEWithLogitsLoss(weigth=class_weigth)
             else:
                 if args.n_outputs > 1:
-                    #loss_dict = dict()
+                    loss_dict = dict()
                     #loss_dict['alpha'] = 10
                     #loss_dict['beta'] = 0.5
                     #loss_dict['labels'] = 2
-                    #loss_dict['tau'] = 0.5
+                    loss_dict['tau'] = 0.1
                     #criterion = SCELoss(loss_dict)
                     #criterion = ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss()
-                    criterion = None #nn.CrossEntropyLoss() #ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
-                    criterion0 = nn.CrossEntropyLoss()
-                    criterion1 = nn.CrossEntropyLoss() # label_smoothing=0.7)
+                    criterion = ClipLogistCELoss(loss_dict) #nn.BCEWithLogitsLoss() #
+                    #criterion0 = nn.CrossEntropyLoss()
+                    #criterion1 = nn.CrossEntropyLoss() #label_smoothing=0.9) # label_smoothing=0.7)
+                    criterion0 = None
+                    criterion1 = None
                     assert (criterion is None and ((criterion0 is not None) and (criterion1 is not None))) or (criterion is not None and ((criterion0 is None) and (criterion1 is None)))
                 else:
-                    criterion = nn.BCEWithLogitsLoss()
+                    criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(0.5))
+                    criterion0 = None
+                    criterion1 = None
 
         # Train
         if args.task == 'classifier':
@@ -275,7 +282,7 @@ if __name__ == '__main__':
                     best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model(
                                                     model, criterion, optimizer, dataloaders, device, num_epochs,
                                                     valid_sets[fold], len(valid_dataset), args.valid_per_record, args.extra_aug, type_task=args.task, use_clip_grad=False, n_outputs=args.n_outputs,
-                    criterion0=criterion0, criterion1=criterion1, split_criterion=args.split_criterion)
+                    criterion0=criterion0, criterion1=criterion1, split_criterion=args.split_criterion, scheduler=exp_lr_scheduler)
             else:
                 best_model, curves_accs, curves_losses, train_df, valid_df, best_epoch = train_scratch_model_no_valid(
                                                 model, criterion, optimizer, dataloaders, device, num_epochs, type_task=args.task, use_clip_grad=False, n_outputs = args.n_outputs)

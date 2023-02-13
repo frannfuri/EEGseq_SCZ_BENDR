@@ -153,7 +153,7 @@ def train_scratch_model_no_valid(model, criterion, optimizer, dataloaders, devic
 
 def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_epochs, valid_rec_names, valid_len,
                         valid_per_record, extra_aug,  type_task, use_clip_grad, n_divisions_segments=4, n_outputs=1, split_criterion=False,
-                        criterion0=None, criterion1=None):
+                        criterion0=None, criterion1=None, scheduler=None):
     since = time.time()
 
     best_model_wts = copy.deepcopy(model.state_dict())
@@ -226,13 +226,18 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                                 loss0 = criterion0(outputs[zero_ids], labels[zero_ids])
                                 loss1 = criterion1(outputs[one_ids], labels[one_ids])
                                 assert criterion is None
-                                loss = loss0 + loss1
+                                if len(zero_ids) == 0:
+                                    loss = loss1
+                                elif len(one_ids) == 0:
+                                    loss = loss0
+                                else:
+                                    loss = loss0 + loss1
                             else:
                                 loss = criterion(outputs, labels)
                                 assert (criterion0 is None) and (criterion1 is None)
                             _, preds = torch.max(outputs, 1)
                     else:
-                        loss = criterion(outputs.squeeze(1).double(), labels)
+                        loss = criterion(outputs.squeeze(1).double(), labels.double())
                         if split_criterion:
                             assert 1 == 0
                         preds = outputs
@@ -322,6 +327,8 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                         index_count_ += len_subsegment_
 
             if phase == 'train':
+                if scheduler is not None:
+                    scheduler.step()
                 epoch_loss = running_loss / train_num_samples
                 train_losses.append(epoch_loss)
                 if type_task=='classifier':
