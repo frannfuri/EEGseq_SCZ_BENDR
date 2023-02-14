@@ -619,3 +619,23 @@ class ClipLogistCELoss(torch.nn.Module):
 
     def __str__(self):
         return 'ClipLogistCELoss'
+
+def accuracy_per_segments(valid_preds, valid_targets, n_seg=3, percent=0.5):
+    tot_ = 0
+    corr_ = 0
+    for i_ in range(len(valid_targets)):
+        assert all_same(valid_targets[i_])
+        assert len(valid_targets[i_]) == len(valid_preds[i_])
+        index_count_ = 0
+        len_subsegment_ = len(valid_targets[i_]) // n_seg
+        for j_ in range(n_seg):
+            subsegment_preds_ = valid_preds[i_][index_count_:(index_count_ + len_subsegment_)]
+            subsegment_corrects_ = 0
+            for pred_ii in subsegment_preds_:
+                if pred_ii == valid_targets[i_][0]:
+                    subsegment_corrects_ += 1
+            if subsegment_corrects_ / len_subsegment_ >= percent:
+                corr_ += 1
+            tot_ += 1
+            index_count_ += len_subsegment_
+    corr_, tot_

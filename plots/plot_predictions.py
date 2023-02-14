@@ -11,10 +11,11 @@ import numpy as np
 
 if __name__ == '__main__':
     # PARAMETERS
-    data_path = '../../BENDR_datasets/decomp_study_SA010' #h_scz_study'
+    data_path = '../../BENDR_datasets/decomp_study_SA039' #h_scz_study'
     n_folds = 5
-    model_path1 = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0507_f1f_th04_len40ov30_/best_model_f'
-    model_path2 = '_decomp_study_SA010_lr5e-05bs8.pt'
+    model_path1 = '../../results/linear-regressor-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_stepLR01_maeL_len40ov30_/best_model_f'
+    model_path2 = '_decomp_study_SA039_lr5e-05bs8.pt'
+    regression_task = True
     regression_task = True
     th = 0.4
 
@@ -29,6 +30,10 @@ if __name__ == '__main__':
         reader = csv.reader(f)
         valid_sets = list(reader)
 
+    if regression_task:
+        target_feature = data_settings['target_feature'] + '_norm'
+    else:
+        target_feature = data_settings['target_feature']
     array_epochs_all_records, sorted_record_names = charge_dataset(directory=data_path,
                                                                    tlen=data_settings['tlen'],
                                                                    overlap=data_settings['overlap_len'],
@@ -36,7 +41,7 @@ if __name__ == '__main__':
                                                                    data_min=data_settings['data_min'],
                                                                    chns_consider=data_settings['chns_to_consider'],
                                                                    labels_path='../' + data_settings['labels_path'],
-                                                                   target_f=data_settings['target_feature'],
+                                                                   target_f=target_feature,
                                                                    apply_winsor=data_settings['apply_winsorising'], new_sfreq=256)
 
     # Reorder the Xs and Ys data
@@ -103,10 +108,13 @@ if __name__ == '__main__':
 
         fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(4,3))
         for i in range(len(valid_record_names)):
-            marker_color = 'blue' if all_recs_targets[i][0] == 0 else 'red'
-            assert all_recs_targets[i][0] == 1 or all_recs_targets[i][0] == 0
-            axs[i].set_yticks([0.25, 0.75], minor=True)
-            axs[i].set_yticks([0, 0.5, 1], minor=False)
+            if not regression_task:
+                marker_color = 'blue' if all_recs_targets[i][0] == 0 else 'red'
+                assert all_recs_targets[i][0] == 1 or all_recs_targets[i][0] == 0
+                axs[i].set_yticks([0.25, 0.75], minor=True)
+                axs[i].set_yticks([0, 0.5, 1], minor=False)
+            else:
+                marker_color='blue'
             axs[i].yaxis.grid(True, linestyle='--', which='major', linewidth=1)
             axs[i].yaxis.grid(True, linestyle='--', which='minor')
             if not regression_task:
@@ -117,6 +125,10 @@ if __name__ == '__main__':
                            c=marker_color, s=20)
             axs[i].set_title('Sample predictions of best model CV it. n°{}'.format(f + 1), fontsize=8)
             axs[i].legend(fontsize=8, loc='center left', bbox_to_anchor=(0.8, -0.2))
-            axs[i].set_ylim((-0.5, 1.5))
+            if not regression_task:
+                axs[i].set_ylim((-0.5, 1.5))
+            else:
+                axs[i].set_ylim((-1.2, 1.2))
+                axs[i].axhline(all_recs_targets[i][0], linestyle='dashed', c='r')
         plt.tight_layout()
     plt.show()
