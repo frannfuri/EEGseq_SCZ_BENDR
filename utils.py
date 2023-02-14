@@ -639,3 +639,27 @@ def accuracy_per_segments(valid_preds, valid_targets, n_seg=3, percent=0.5):
             tot_ += 1
             index_count_ += len_subsegment_
     corr_, tot_
+
+def accuracy_per_segments_detection(valid_preds, valid_targets, n_seg=3, min_detect=2):
+    tot_ = 0
+    corr_ = 0
+    for i_ in range(len(valid_targets)):
+        assert all_same(valid_targets[i_])
+        assert len(valid_targets[i_]) == len(valid_preds[i_])
+        index_count_ = 0
+        len_subsegment_ = len(valid_targets[i_]) // n_seg
+        for j_ in range(n_seg):
+            subsegment_preds_ = valid_preds[i_][index_count_:(index_count_ + len_subsegment_)]
+            subsegment_detects = 0
+            for pred_ii in subsegment_preds_:
+                if pred_ii == 1:
+                    subsegment_detects += 1
+            if subsegment_detects > 1:
+                subsegment_final_pred = 1
+            else:
+                subsegment_final_pred = 0
+            if subsegment_final_pred == valid_targets[i_][0]:
+                corr_ += 1
+            tot_ += 1
+            index_count_ += len_subsegment_
+    corr_, tot_
