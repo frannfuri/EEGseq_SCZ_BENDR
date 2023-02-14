@@ -5,7 +5,7 @@ import sklearn.metrics as skmetrics
 import pandas as pd
 from collections import OrderedDict
 import numpy as np
-from utils import decision, all_same, accuracy_per_segments
+from utils import decision, all_same, accuracy_per_segments, accuracy_per_segments_detection
 import random
 
 def f1_loss(y_true: torch.Tensor, y_pred: torch.Tensor, is_training=False) -> torch.Tensor:
@@ -309,6 +309,7 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
 
 
                 corr_, tot_ = accuracy_per_segments(valids_preds_, valid_targets_, n_seg=3, precent=0.5)
+                #corr_, tot_ = accuracy_per_segments_detection(valids_preds_, valid_targets_, n_seg=3, min_detect=2)
 
             if phase == 'train':
                 if scheduler is not None:
