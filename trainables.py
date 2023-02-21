@@ -308,8 +308,8 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                 valid_targets_.append(one_record_valid_targets)
 
 
-                corr_, tot_ = accuracy_per_segments(valids_preds_, valid_targets_, n_seg=3, precent=0.5)
-                #corr_, tot_ = accuracy_per_segments_detection(valids_preds_, valid_targets_, n_seg=3, min_detect=2)
+                #corr_, tot_ = accuracy_per_segments(valids_preds_, valid_targets_, n_seg=3, percent=0.5)
+                corr_, tot_ = accuracy_per_segments_detection(valids_preds_, valid_targets_, n_seg=3, min_detect=2)
 
             if phase == 'train':
                 if scheduler is not None:

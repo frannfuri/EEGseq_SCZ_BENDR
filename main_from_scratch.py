@@ -266,7 +266,7 @@ if __name__ == '__main__':
                     criterion1 = None
                     assert (criterion is None and ((criterion0 is not None) and (criterion1 is not None))) or (criterion is not None and ((criterion0 is None) and (criterion1 is None)))
                 else:
-                    criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(0.5))
+                    criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(0.2))
                     criterion0 = None
                     criterion1 = None
 

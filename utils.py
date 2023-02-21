@@ -638,7 +638,7 @@ def accuracy_per_segments(valid_preds, valid_targets, n_seg=3, percent=0.5):
                 corr_ += 1
             tot_ += 1
             index_count_ += len_subsegment_
-    corr_, tot_
+    return corr_, tot_
 
 def accuracy_per_segments_detection(valid_preds, valid_targets, n_seg=3, min_detect=2):
     tot_ = 0
@@ -654,7 +654,7 @@ def accuracy_per_segments_detection(valid_preds, valid_targets, n_seg=3, min_det
             for pred_ii in subsegment_preds_:
                 if pred_ii == 1:
                     subsegment_detects += 1
-            if subsegment_detects > 1:
+            if subsegment_detects > (min_detect-1):
                 subsegment_final_pred = 1
             else:
                 subsegment_final_pred = 0
@@ -662,4 +662,4 @@ def accuracy_per_segments_detection(valid_preds, valid_targets, n_seg=3, min_det
                 corr_ += 1
             tot_ += 1
             index_count_ += len_subsegment_
-    corr_, tot_
+    return corr_, tot_

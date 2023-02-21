@@ -13,11 +13,10 @@ if __name__ == '__main__':
     # PARAMETERS
     data_path = '../../BENDR_datasets/decomp_study_SA039' #h_scz_study'
     n_folds = 5
-    model_path1 = '../../results/linear-regressor-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_stepLR01_maeL_len40ov30_/best_model_f'
-    model_path2 = '_decomp_study_SA039_lr5e-05bs8.pt'
-    regression_task = True
-    regression_task = True
-    th = 0.4
+    model_path1 = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_th04_bcePw02_stepLR01_len40ov30_/best_model_f'
+    model_path2 = '_decomp_study_SA039_lr0.0001bs8.pt'
+    regression_task = False
+    th = 0.5
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -97,7 +96,7 @@ if __name__ == '__main__':
                         pred = output
                     else:
                         prepred = torch.sigmoid(output)
-                        rec_predict_probabs.append(prepred)
+                        rec_predict_probabs.append(prepred.item())
                         pred = (prepred >= th).long().squeeze()
                     rec_predictions.append(pred.item())
                     rec_targets.append(y.item())

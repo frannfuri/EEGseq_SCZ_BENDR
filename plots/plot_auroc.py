@@ -13,8 +13,8 @@ from sklearn.metrics import roc_curve, roc_auc_score
 def plot_roc_curves(path, n_folds):
     fig, axs = plt.subplots(2,3, figsize=(15,8))
     for f in range(n_folds):
-        y_prob_preds = np.load('./results/Y_PROB_PRED_f{}_{}.npy'.format(f, path))
-        y_targets = np.load('./results/Y_TARGET_f{}_{}.npy'.format(f, path))
+        y_prob_preds = np.load('./Y_PROB_PRED_f{}_{}.npy'.format(f, path))
+        y_targets = np.load('./Y_TARGET_f{}_{}.npy'.format(f, path))
         fpr, tpr, thrs = roc_curve(y_targets, y_prob_preds)
         auc = roc_auc_score(y_targets, y_prob_preds)
         # plot ROC curve
@@ -47,10 +47,13 @@ def plot_roc_curves(path, n_folds):
 
 if __name__ == '__main__':
     # PARAMETERS
-    data_path = '../../BENDR_datasets/trivial_set'  ### CHECK .yml IS OKAY!!
-    n_folds = 6
-    model_path1 = '../linear-rslts_avp_pAug_bw_vpr_dp0307_f1f_th04_ep30_len40ov30_/best_model_f'
-    model_path2 = '_h_scz_study_lr0.0001bs8.pt'
+    # PARAMETERS
+    data_path = '../../BENDR_datasets/decomp_study_SA039'  ### CHECK .yml IS OKAY!!
+    n_folds = 5
+    model_path1 = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_th04_bcePw02_stepLR01_len40ov30_/best_model_f'
+    model_path2 = '_decomp_study_SA039_lr0.0001bs8.pt'
+
+
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -71,7 +74,7 @@ if __name__ == '__main__':
                                                                    chns_consider=data_settings['chns_to_consider'],
                                                                    labels_path='../' + data_settings['labels_path'],
                                                                    target_f=data_settings['target_feature'],
-                                                                   apply_winsor=data_settings['apply_winsorising'])
+                                                                   apply_winsor=data_settings['apply_winsorising'], new_sfreq=256)
 
     # Reorder the Xs and Ys data
     is_first_rec = True
