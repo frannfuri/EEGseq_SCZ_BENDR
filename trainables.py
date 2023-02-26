@@ -214,9 +214,14 @@ def train_scratch_model(model, criterion, optimizer, dataloaders, device, num_ep
                     outputs = model(inputs)
                     if type_task == 'classifier':
                         if n_outputs == 1:
+                            # Other losses
                             labels = labels.to(torch.float64)
                             loss = criterion(outputs.squeeze(1), labels)
                             prepreds = torch.sigmoid(outputs)
+                            # Focal loss
+                            #labels = labels.to(torch.int64)
+                            #loss = criterion(prepreds.squeeze(1), labels)
+                            
                             preds = (prepreds >= 0.4).long().squeeze(1)
                         else:
                             labels = labels.to(torch.int64)

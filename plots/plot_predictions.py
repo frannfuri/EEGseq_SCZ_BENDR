@@ -11,12 +11,12 @@ import numpy as np
 
 if __name__ == '__main__':
     # PARAMETERS
-    data_path = '../../BENDR_datasets/decomp_study_SA039' #h_scz_study'
-    n_folds = 5
-    model_path1 = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_th04_bcePw02_stepLR01_len40ov30_/best_model_f'
-    model_path2 = '_decomp_study_SA039_lr0.0001bs8.pt'
+    data_path = '../../BENDR_datasets/decomp_study_SA047' #h_scz_study'
+    n_folds = 4
+    model_path1 = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_th04_bcePw01_stepLR01_val_len40ov30_/best_model_f'
+    model_path2 = '_decomp_study_SA047_lr0.0001bs8.pt'
     regression_task = False
-    th = 0.5
+    th = 0.55
 
     #################################
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -106,6 +106,7 @@ if __name__ == '__main__':
             all_recs_targets.append(rec_targets)
 
         fig, axs = plt.subplots(len(valid_record_names), 1, figsize=(4,3))
+        
         for i in range(len(valid_record_names)):
             if not regression_task:
                 marker_color = 'blue' if all_recs_targets[i][0] == 0 else 'red'

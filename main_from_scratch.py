@@ -16,6 +16,7 @@ from torch import nn
 from utils import comp_confusion_matrix, MODEL_CHOICES, TASK_CHOICES, ClipLogistCELoss, SCELoss
 from mlxtend.plotting import plot_confusion_matrix
 from torch.optim import lr_scheduler
+from focal_loss.focal_loss import FocalLoss
 
 if __name__ == '__main__':
     # Arguments and preliminaries
@@ -109,7 +110,7 @@ if __name__ == '__main__':
 
     # K-fold Cross Validation
     best_epoch_fold = []
-    print('DATASET: {}'.format(data_settings['name']))
+#    print('DATASET: {}'.format(data_settings['name']))
     n_folds = len(valid_sets) if args.use_valid else 1
 
     for fold in range(n_folds):
@@ -240,6 +241,7 @@ if __name__ == '__main__':
         # Optimizer and Loss
         if args.freeze_first_layers:
             optimizer = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0.01)
+            #optimizer = torch.optim.SGD(filter(lambda p: p.requires_grad, model.parameters()), lr=lr, weight_decay=0.01)
             exp_lr_scheduler = lr_scheduler.StepLR(optimizer, step_size=7, gamma=0.1)
         else:
             optimizer = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=0.01)
@@ -266,7 +268,9 @@ if __name__ == '__main__':
                     criterion1 = None
                     assert (criterion is None and ((criterion0 is not None) and (criterion1 is not None))) or (criterion is not None and ((criterion0 is None) and (criterion1 is None)))
                 else:
-                    criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(0.2))
+                    #focal_ws = torch.FloatTensor([2, 0.1]).to(device)
+                    #criterion = FocalLoss(gamma=1, weights=focal_ws)
+                    criterion = nn.BCEWithLogitsLoss(pos_weight=torch.tensor(0.05))
                     criterion0 = None
                     criterion1 = None
 

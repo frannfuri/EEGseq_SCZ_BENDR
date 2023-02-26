@@ -5,11 +5,11 @@ import pickle
 import re
 
 if __name__ == '__main__':
-    path = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_th04_bcePw04_stepLR01_len40ov30_'
+    path = '../linear-classifier-rslts_avp_pAug_pretOwn_vpr_dp0307_f1f_th04_bcePw005_stepLR01_1detect_adW_len40ov30_'
     #path = '../linear-classifier-rslts_avp_pAug_bw_dp0307_f1f_th04_ce_o2_len40ov30_'
-    name= 'decomp_study_SA047_lr0.0001bs8'
+    name= 'decomp_study_SA039_lr0.0001bs8'
     #name = 'h_scz_study_lr0.0001bs8'  #5e-05bs8'
-    n_folds = 4
+    n_folds = 6 #11
     eps_to_plot = 29
     task_type = 'classifier'  #'regressor'
     use_lims = True
@@ -69,7 +69,10 @@ if __name__ == '__main__':
     for i in range(n_folds):
         plt.plot(train_loss_curves_per_fold[i][:eps_to_plot], label='Train CV it. {}'.format(i+1), linestyle='dashed')
         if use_val:
-            plt.plot(valid_loss_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1))
+            if i == 5:
+                plt.plot(valid_loss_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1), c='lightcoral')
+            else:
+                plt.plot(valid_loss_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1))
     plt.title('Training loss, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
     plt.legend(loc='best', ncol=2, fontsize=8)
     plt.xlabel('epoch')
@@ -99,7 +102,10 @@ if __name__ == '__main__':
         for i in range(n_folds):
             plt.plot(train_acc_curves_per_fold[i][:eps_to_plot], label='Train CV it. {}'.format(i+1), linestyle='dashed')
             if use_val:
-                plt.plot(valid_acc_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1))
+                if i == 5:
+                    plt.plot(valid_acc_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1), c='lightcoral')
+                else:
+                    plt.plot(valid_acc_curves_per_fold[i][:eps_to_plot], label='Valid CV it. {}'.format(i+1))
         plt.title('Training accuracy, MODEL: {}\n(samples {}s, overlap {}s)\n[{} ({})]'.format(path[2:8], w_len, overlap, path[15:-1], name), fontsize=8)
         plt.legend(loc='best', ncol=2, fontsize=8)
         plt.xlabel('epoch')
